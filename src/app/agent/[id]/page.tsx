@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, BrainCircuit, Check, CircleDollarSign, MapPin, Search, ShieldAlert, Wrench, X } from "lucide-react";
 import { ConfirmModal, CountUp } from "@/components/ui";
-import { isGoodMatch } from "@/lib/agent-tools";
+import { isGoodMatch } from "@/lib/matching";
 import type { Confidence } from "@/lib/safety";
 import { finishAnalysis, getSpace, rankRequests, sendProposal, type RankedRequest } from "@/lib/services";
 import { SAMPLE_ANALYSIS, SAMPLE_SPACE, type Space } from "@/lib/types";

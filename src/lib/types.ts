@@ -1,5 +1,6 @@
 export type Role = "owner" | "seeker";
-export type MatchStatus = "candidate" | "proposed" | "accepted" | "rejected";
+export type MatchStatus = "candidate" | "proposed" | "applied" | "accepted" | "rejected";
+export type MatchInitiator = "owner" | "seeker";
 
 export type UserProfile = { uid: string; name: string; role: Role; email?: string };
 
@@ -64,7 +65,18 @@ export type SpaceMatch = {
   reason: string;
   // 소유자가 최종 승인한 이용료입니다. AI 추정값을 그대로 쓰지 않습니다.
   approvedPrice?: string;
+  initiator?: MatchInitiator;
+  algorithmVersion?: "fuzzy-mcda-v2";
   status: MatchStatus;
+  createdAt: unknown;
+};
+
+export type ChatMessage = {
+  id: string;
+  matchId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
   createdAt: unknown;
 };
 

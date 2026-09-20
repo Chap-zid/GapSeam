@@ -1,6 +1,6 @@
 # 빈틈이음
 
-방치된 공가의 활용 가능성을 분석하고, 실제 공간 수요와 비교해 소유자 승인 후 연결하는 해커톤 프로토타입입니다.
+방치된 공가의 활용 가능성을 분석하고 실제 공간 수요와 비교해, 소유자와 이용자 어느 쪽에서도 연결을 시작할 수 있는 해커톤 프로토타입입니다.
 
 ## 실행
 
@@ -57,6 +57,26 @@ firebase apphosting:secrets:grantaccess VWORD_API_KEY --backend my-web-app --loc
 4. 기기 A: `연결 제안 보내기` → 확인 모달에서 `제안 보내기`
 5. 기기 B: 새 제안이 실시간 표시됨 → `수락`
 6. 기기 A: 연결 현황이 `매칭이 성사되었습니다.`로 즉시 변경됨
+7. 양쪽 기기: 성사된 연결의 전용 채팅방에서 조건 협의
+8. 채팅방의 `공동 문서 열기` → 같은 매칭 문서함에서 DOCX 편집·검토
+
+이용자가 먼저 연결하는 역방향 흐름도 지원합니다.
+
+1. `/spaces`에서 로그인 없이 등록된 공간과 분석 결과 탐색
+2. 이용자로 로그인하고 등록한 공간 수요를 선택
+3. 적합도 근거를 확인한 뒤 `소유자에게 이용 신청`
+4. 소유자 대시보드에 신청이 실시간 표시됨 → 수락 또는 거절
+5. 수락 시 양쪽에 동일한 채팅·공동 문서 작업 화면이 열림
+
+## 매칭 알고리즘
+
+`src/lib/matching.ts`의 **퍼지 다기준 적합도(Fuzzy MCDA v2)**를 사용합니다.
+
+- 지역 30점, 예산 25점, 면적 20점, 활용 목적 25점
+- 예산과 면적은 단순 통과/탈락 대신 차이 비율을 0~1 멤버십으로 정규화
+- 활용 목적은 요청 설명과 추천 활용의 용도군·핵심어 유사도를 함께 계산
+- 생활권, 최소 면적, 예산이 크게 어긋나면 제약 페널티 적용
+- 항목별 점수, 경고, 최종 적합도를 함께 저장해 결과 이유를 설명 가능
 
 ## 실패 대비와 교체 지점
 
@@ -65,14 +85,16 @@ firebase apphosting:secrets:grantaccess VWORD_API_KEY --backend my-web-app --loc
 - Firebase 미설정: 로그인 기능 비활성. 데이터 계층의 로컬 저장소는 개발용으로만 유지합니다.
 - Firebase 데이터 접근: `src/lib/services.ts`에만 모아 UI와 분리
 
-VWorld 서버 연동은 `src/lib/vworld.ts`, 브라우저 연동은 `src/lib/vworld-browser.ts`, 분석 결합은 `src/app/api/analyze/route.ts`로 분리했습니다. 계약이나 연락처 공유는 구현하지 않았으며, 연결 제안은 소유자의 확인 이후에만 `proposed` 상태로 생성됩니다.
+VWorld 서버 연동은 `src/lib/vworld.ts`, 브라우저 연동은 `src/lib/vworld-browser.ts`, 분석 결합은 `src/app/api/analyze/route.ts`로 분리했습니다. 계약이나 연락처 공유는 구현하지 않았으며, 소유자 제안은 `proposed`, 이용자 신청은 `applied` 상태로 시작합니다. 상대방이 수락한 `accepted` 매칭에서만 채팅과 공동 문서함을 사용할 수 있습니다.
 
 ## 주요 데이터
 
 - `users`: 역할과 표시 이름
 - `spaces`: 공간 정보, Storage 이미지 URL, 분석 결과
 - `requests`: 이용자 공간 수요
-- `matches`: 공간-수요 적합도와 `proposed | accepted | rejected` 상태
+- `matches`: 공간-수요 적합도, 시작 주체와 `proposed | applied | accepted | rejected` 상태
+- `matches/{matchId}/messages`: 성사된 매칭 참여자의 실시간 채팅
+- `data/documents`: 개발용 DOCX 원본과 매칭별 문서 메타데이터
 
 Firestore `onSnapshot`으로 역할별 `matches`를 구독해 새로고침 없이 상태를 반영합니다.
 

@@ -2,8 +2,9 @@ import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, s
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, isFirebaseReady, storage } from "./firebase";
 import { demoId, readDemo, subscribeDemo, writeDemo } from "./demo-store";
-import { SAMPLE_REQUEST, type Role, type Space, type SpaceMatch, type SpaceRequest } from "./types";
-import { matchingTool, runSpaceAgent, type MatchResult } from "./agent-tools";
+import { SAMPLE_REQUEST, type ChatMessage, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
+import { runSpaceAgent } from "./agent-tools";
+import { matchingTool, type MatchResult } from "./matching";
 import { withTimeout } from "./safety";
 
 export async function saveRequest(input: Omit<SpaceRequest, "id" | "createdAt">) {
@@ -81,10 +82,11 @@ export function calculateMatch(space: Space, request: SpaceRequest) {
 
 export async function sendProposal(space: Space, request: SpaceRequest, match?: MatchResult, approvedPrice?: string) {
   const result = match || calculateMatch(space, request);
-  const payload = { spaceId: space.id, requestId: request.id, ownerId: space.ownerId, seekerId: request.seekerId, score: result.score, reason: result.reason, approvedPrice: approvedPrice || space.analysis?.estimatedPrice || "협의", status: "proposed" as const };
+  const payload = { spaceId: space.id, requestId: request.id, ownerId: space.ownerId, seekerId: request.seekerId, score: result.score, reason: result.reason, approvedPrice: approvedPrice || space.analysis?.estimatedPrice || "협의", initiator: "owner" as const, algorithmVersion: result.algorithmVersion, status: "proposed" as const };
   if (!isFirebaseReady || !db) {
     const data = readDemo();
     const existing = data.matches.find((m) => m.spaceId === space.id && m.requestId === request.id);
+    if (existing?.status === "applied") throw new Error("이 이용자가 이미 공간 이용을 신청했습니다. 소유자 대시보드에서 응답해주세요.");
     if (existing) writeDemo({ ...data, matches: data.matches.map((m) => m.id === existing.id ? { ...m, ...payload } : m) });
     else writeDemo({ ...data, matches: [...data.matches, { ...payload, id: demoId("match"), createdAt: new Date().toISOString() }] });
     return;
@@ -92,7 +94,25 @@ export async function sendProposal(space: Space, request: SpaceRequest, match?: 
   // 같은 공간·요청 조합은 항상 같은 문서가 되도록 ID를 고정합니다.
   // 예전처럼 matches를 조회하면 보안 규칙이 요구하는 ownerId 조건이 없어 쿼리가 거부됩니다.
   const id = `${space.id}__${request.id}`;
+  const existing = await getDoc(doc(db, "matches", id));
+  if (existing.data()?.status === "applied") throw new Error("이 이용자가 이미 공간 이용을 신청했습니다. 소유자 대시보드에서 응답해주세요.");
   await withTimeout(setDoc(doc(db, "matches", id), { ...payload, createdAt: serverTimestamp() }, { merge: true }), 12_000, "제안을 보내지 못했습니다. 연결 상태를 확인해주세요.");
+}
+
+export async function applyToSpace(space: Space, request: SpaceRequest, match?: MatchResult) {
+  const result = match || calculateMatch(space, request);
+  const id = `${space.id}__${request.id}`;
+  const payload = { spaceId: space.id, requestId: request.id, ownerId: space.ownerId, seekerId: request.seekerId, score: result.score, reason: result.reason, approvedPrice: space.analysis?.estimatedPrice || "협의", initiator: "seeker" as const, algorithmVersion: result.algorithmVersion, status: "applied" as const };
+  if (!isFirebaseReady || !db) {
+    const data = readDemo();
+    if (data.matches.some((item) => item.id === id)) throw new Error("이미 이 공간과 연결 요청이 진행 중입니다.");
+    writeDemo({ ...data, matches: [...data.matches, { ...payload, id, createdAt: new Date().toISOString() }] });
+    return id;
+  }
+  const existing = await getDoc(doc(db, "matches", id));
+  if (existing.exists()) throw new Error("이미 이 공간과 연결 요청이 진행 중입니다.");
+  await withTimeout(setDoc(doc(db, "matches", id), { ...payload, createdAt: serverTimestamp() }), 12_000, "공간 이용 신청을 보내지 못했습니다.");
+  return id;
 }
 
 export async function respondToMatch(id: string, status: "accepted" | "rejected") {
@@ -113,4 +133,31 @@ export function watchMatches(role: Role, uid: string, callback: (items: SpaceMat
 export function watchSpaces(ownerId: string, callback: (items: Space[]) => void) {
   if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().spaces.filter((s) => s.ownerId === ownerId)); emit(); return subscribeDemo(emit); }
   return onSnapshot(query(collection(db, "spaces"), where("ownerId", "==", ownerId)), (s) => callback(s.docs.map((d) => ({ id: d.id, ...d.data() } as Space))));
+}
+
+export function watchAllSpaces(callback: (items: Space[]) => void) {
+  if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().spaces); emit(); return subscribeDemo(emit); }
+  return onSnapshot(collection(db, "spaces"), (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Space))));
+}
+
+export function watchMatch(matchId: string, callback: (item: SpaceMatch | null) => void) {
+  if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().matches.find((item) => item.id === matchId) || null); emit(); return subscribeDemo(emit); }
+  return onSnapshot(doc(db, "matches", matchId), (snapshot) => callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } as SpaceMatch : null));
+}
+
+export function watchChat(matchId: string, callback: (items: ChatMessage[]) => void) {
+  if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().messages.filter((item) => item.matchId === matchId)); emit(); return subscribeDemo(emit); }
+  return onSnapshot(query(collection(db, "matches", matchId, "messages"), orderBy("createdAt", "asc")), (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as ChatMessage))));
+}
+
+export async function sendChatMessage(matchId: string, user: UserProfile, text: string) {
+  const cleaned = text.trim().slice(0, 1_000);
+  if (!cleaned) return;
+  if (!isFirebaseReady || !db) {
+    const data = readDemo();
+    const message: ChatMessage = { id: demoId("message"), matchId, senderId: user.uid, senderName: user.name, text: cleaned, createdAt: new Date().toISOString() };
+    writeDemo({ ...data, messages: [...data.messages, message] });
+    return;
+  }
+  await withTimeout(addDoc(collection(db, "matches", matchId, "messages"), { matchId, senderId: user.uid, senderName: user.name, text: cleaned, createdAt: serverTimestamp() }), 12_000, "메시지를 보내지 못했습니다.");
 }

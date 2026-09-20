@@ -1,4 +1,4 @@
-import type { Role, Space, SpaceMatch, SpaceRequest, UserProfile } from "./types";
+import type { ChatMessage, Role, Space, SpaceMatch, SpaceRequest, UserProfile } from "./types";
 
 const KEY = "binteum-ieum-demo";
 const CHANNEL = "binteum-ieum-live";
@@ -8,13 +8,14 @@ type DemoData = {
   spaces: Space[];
   requests: SpaceRequest[];
   matches: SpaceMatch[];
+  messages: ChatMessage[];
 };
 
-const empty = (): DemoData => ({ users: [], spaces: [], requests: [], matches: [] });
+const empty = (): DemoData => ({ users: [], spaces: [], requests: [], matches: [], messages: [] });
 
 export function readDemo(): DemoData {
   if (typeof window === "undefined") return empty();
-  try { return JSON.parse(localStorage.getItem(KEY) || "null") || empty(); }
+  try { const saved = JSON.parse(localStorage.getItem(KEY) || "null"); return saved ? { ...empty(), ...saved } : empty(); }
   catch { return empty(); }
 }
 

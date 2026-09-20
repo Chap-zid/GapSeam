@@ -12,7 +12,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const dashboard = user?.role === "owner" ? "/owner/dashboard" : "/seeker/dashboard";
   const links = [
-    { href: "/seeker/dashboard", label: "공간 찾기" },
+    { href: "/spaces", label: "공간 찾기" },
     { href: "/owner/new", label: "내 공간 등록" },
     { href: "/request/new", label: "공간 요청 등록" },
     { href: "/documents", label: "문서 도우미" },

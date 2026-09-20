@@ -11,7 +11,7 @@ export default function Home() {
         <p>방치된 공간의 가능성을 분석하고<br/>활용 방법부터 실제 이용자 연결까지 도와드립니다.</p>
         <div className="hero-actions">
           <Link className="button" href="/owner/new">내 공간 분석하기 <ArrowRight size={18}/></Link>
-          <Link className="button secondary" href="/seeker/dashboard">공간 찾아보기</Link>
+          <Link className="button secondary" href="/spaces">공간 찾아보기</Link>
         </div>
       </div>
       <div className="hero-image">

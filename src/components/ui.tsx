@@ -5,13 +5,14 @@ import { Check, X } from "lucide-react";
 import type { MatchStatus } from "@/lib/types";
 
 export function StatusBadge({ status }: { status: MatchStatus }) {
-  const map = { candidate: "검토 중", proposed: "응답 대기", accepted: "매칭 성사", rejected: "종료" };
+  const map = { candidate: "검토 중", proposed: "제안 도착", applied: "신청 검토 중", accepted: "매칭 성사", rejected: "종료" };
   return <span className={`status-badge ${status}`}>{map[status]}</span>;
 }
 
 export function MatchStatus({ status }: { status: MatchStatus }) {
   if (status === "accepted") return <div className="status-panel success"><span className="status-icon"><Check /></span><div><b>매칭이 성사되었습니다.</b><p>이용자와 세부 일정 및 이용 조건을 조율해보세요.</p></div></div>;
   if (status === "rejected") return <div className="status-panel muted"><span className="status-icon"><X /></span><div><b>이번 연결은 성사되지 않았습니다.</b><p>조건에 맞는 다른 이용자를 계속 찾아보겠습니다.</p></div></div>;
+  if (status === "applied") return <div className="status-panel waiting"><span className="pulse-dot"/><div><b>공간 이용 신청이 전달되었습니다.</b><p>공간 소유자의 응답을 기다리고 있습니다.</p></div></div>;
   return <div className="status-panel waiting"><span className="pulse-dot"/><div><b>연결 요청을 보냈습니다.</b><p>이용자의 응답을 기다리고 있습니다. 상태는 실시간으로 반영됩니다.</p></div></div>;
 }
 
