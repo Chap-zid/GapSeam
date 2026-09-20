@@ -1,7 +1,10 @@
 node_modules
+.npm-cache
 .next
 .env*.local
 out
 *.log
 *.tsbuildinfo
 .firebase
+data/documents/*
+!data/documents/.gitkeep

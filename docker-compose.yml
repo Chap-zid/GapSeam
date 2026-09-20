@@ -1,0 +1,20 @@
+services:
+  document-server:
+    image: onlyoffice/documentserver:8.3
+    container_name: gapseam-document-server
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      JWT_ENABLED: "false"
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+      ALLOW_META_IP_ADDRESS: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-logs:/var/log/onlyoffice
+
+volumes:
+  onlyoffice-data:
+  onlyoffice-logs:

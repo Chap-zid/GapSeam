@@ -9,7 +9,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); const router = useRouter();
   const { user, ready, error, logout } = useSession();
   const role = roleForPath(pathname);
-  const protectedPage = !!role || pathname === "/mypage";
+  const protectedPage = !!role || pathname === "/mypage" || pathname.startsWith("/documents");
   useEffect(() => {
     if (ready && !user && !error && protectedPage) router.replace("/login?next=" + encodeURIComponent(pathname) + (role ? "&role=" + role : ""));
   }, [ready, user, error, protectedPage, pathname, role, router]);

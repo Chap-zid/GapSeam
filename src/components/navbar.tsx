@@ -15,6 +15,7 @@ export function Navbar() {
     { href: "/seeker/dashboard", label: "공간 찾기" },
     { href: "/owner/new", label: "내 공간 등록" },
     { href: "/request/new", label: "공간 요청 등록" },
+    { href: "/documents", label: "문서 도우미" },
   ];
   return <header className="nav-wrap">
     <nav className="nav shell">

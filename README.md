@@ -9,6 +9,14 @@ npm install
 npm run dev
 ```
 
+문서 도우미는 DOCX 원본을 브라우저에서 편집하기 위해 Docker의 ONLYOFFICE Document Server를 사용합니다. 앱과 함께 아래 명령을 실행한 뒤 `/documents`로 이동하세요.
+
+```bash
+docker compose up -d
+```
+
+기본 구성은 브라우저 편집기를 `http://localhost:8080`, 편집 결과 콜백을 `http://host.docker.internal:3000`에서 찾습니다. 다른 호스트나 포트를 사용하면 `.env.local`의 `NEXT_PUBLIC_ONLYOFFICE_URL`, `DOCUMENT_SERVER_CALLBACK_ORIGIN`을 변경하세요. 문서는 개발용 로컬 `data/documents`에 저장되므로 운영 배포에서는 인증된 객체 저장소로 교체해야 합니다. HWP/HWPX는 변환 결과 손상을 피하기 위해 자동 변환하지 않으며 DOCX로 변환한 뒤 업로드합니다.
+
 로그인에는 Firebase 설정과 Google 제공자 활성화가 필요합니다. 로그인 상태는 Firebase Auth로 확인하며 브라우저에 남은 프로필로 로그인 여부를 판단하지 않습니다.
 
 공간 분석은 서버의 `OPENAI_API_KEY`가 있으면 Responses API를 사용하고, 호출 실패 시 Mock 분석으로 자동 전환됩니다. 키에 `NEXT_PUBLIC_` 접두사를 붙이지 마세요. 필요하면 `OPENAI_MODEL`로 모델을 바꿀 수 있으며 기본값은 `gpt-4.1-mini`입니다.
