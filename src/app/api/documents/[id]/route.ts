@@ -8,7 +8,7 @@ function documentServerOrigin(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const configuredOrigin = process.env.DOCUMENT_SERVER_CALLBACK_ORIGIN;
   if (configuredOrigin && !configuredOrigin.includes("0.0.0.0")) return configuredOrigin;
-  if (requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1") return `http://host.docker.internal:${requestUrl.port || "3000"}`;
+  if (["localhost", "127.0.0.1", "0.0.0.0"].includes(requestUrl.hostname)) return `http://host.docker.internal:${requestUrl.port || "3000"}`;
   return requestUrl.origin;
 }
 
