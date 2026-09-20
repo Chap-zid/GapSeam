@@ -9,7 +9,7 @@ export type NearbyFacility = {
 };
 
 export type LocationContext = {
-  source: "vworld" | "fallback";
+  source: "vworld" | "openai" | "fallback";
   status: string;
   refinedAddress: string;
   summary: string;
@@ -23,7 +23,6 @@ type Coordinate = {
   refinedAddress: string;
 };
 
-const FALLBACK_SUMMARY = "주거지역 · 학교 420m · 버스정류장 170m · 편의점 230m";
 const VWORLD_ENDPOINT = "https://api.vworld.kr/req";
 const PLACE_QUERIES = [
   { category: "학교", query: "학교" },
@@ -78,7 +77,7 @@ async function requestCoordinate(address: string, type: "ROAD" | "PARCEL"): Prom
     errorFormat: "json",
     type,
   });
-  const root = asRecord(await fetchJson("address", params));
+  const root = asRecord(await fetchJson("address", params, true));
   const response = asRecord(root.response);
   if (response.status !== "OK") {
     const error = asRecord(response.error);
@@ -143,7 +142,7 @@ async function nearestPlace(origin: Coordinate, category: string, query: string)
     format: "json",
     errorFormat: "json",
   });
-  const root = asRecord(await fetchJson("search", params));
+  const root = asRecord(await fetchJson("search", params, true));
   const response = asRecord(root.response);
   if (response.status !== "OK") return null;
   const items = asArray(asRecord(response.result).items);
@@ -198,7 +197,7 @@ function buildSummary(refinedAddress: string, landUse: string[], facilities: Nea
 
 export async function getLocationContext(address: string): Promise<LocationContext> {
   if (!apiKey()) {
-    return { source: "fallback", status: "missing-key", refinedAddress: address, summary: FALLBACK_SUMMARY, facilities: [], landUse: [] };
+    return { source: "fallback", status: "missing-key", refinedAddress: address, summary: `${address} · VWorld 주변 시설 조회 불가`, facilities: [], landUse: [] };
   }
   try {
     const coordinate = await geocode(address);
@@ -219,6 +218,6 @@ export async function getLocationContext(address: string): Promise<LocationConte
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("VWorld location lookup failed", message);
-    return { source: "fallback", status: `lookup-failed:${message.slice(0, 120)}`, refinedAddress: address, summary: FALLBACK_SUMMARY, facilities: [], landUse: [] };
+    return { source: "fallback", status: `lookup-failed:${message.slice(0, 120)}`, refinedAddress: address, summary: `${address} · VWorld 주변 시설 조회 불가`, facilities: [], landUse: [] };
   }
 }

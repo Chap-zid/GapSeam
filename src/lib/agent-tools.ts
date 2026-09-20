@@ -11,8 +11,7 @@ export async function visionTool(imageUrls: string[]) {
 }
 
 export async function locationTool(address: string) {
-  void address;
-  return { summary: "주거지역 · 학교 420m · 버스정류장 170m · 편의점 230m", transit: "보통", facilities: ["학교 420m", "버스정류장 170m", "편의점 230m"] };
+  return { summary: `${address || "입력 주소"} · 주변 시설의 실제 거리를 확인하지 못했습니다.`, transit: "확인 필요", facilities: [] as string[] };
 }
 
 export async function usagePlanningTool(space: Space) {
@@ -43,7 +42,7 @@ export type AgentRun = {
   blocked: "low-confidence" | null;
   confidence: Confidence | null;
   source: "openai" | "fallback";
-  locationSource: "vworld" | "fallback";
+  locationSource: "vworld" | "openai" | "fallback";
 };
 
 export async function runSpaceAgent(space: Space, acknowledgeLowConfidence = false): Promise<AgentRun> {
@@ -62,8 +61,8 @@ export async function runSpaceAgent(space: Space, acknowledgeLowConfidence = fal
       body: JSON.stringify({ space, location, acknowledgeLowConfidence }),
     });
     if (!response.ok) throw new Error(`Analysis endpoint ${response.status}`);
-    const result = await response.json() as { analysis?: Analysis; blocked?: string; confidence?: Confidence; source?: "openai" | "fallback"; locationSource?: "vworld" | "fallback" };
-    const locationSource = result.locationSource === "vworld" ? "vworld" as const : "fallback" as const;
+    const result = await response.json() as { analysis?: Analysis; blocked?: string; confidence?: Confidence; source?: "openai" | "fallback"; locationSource?: "vworld" | "openai" | "fallback" };
+    const locationSource = result.locationSource === "vworld" ? "vworld" as const : result.locationSource === "openai" ? "openai" as const : "fallback" as const;
     if (result.blocked === "low-confidence") {
       return { analysis: null, blocked: "low-confidence", confidence: result.confidence ?? preflight, source: "fallback", locationSource };
     }

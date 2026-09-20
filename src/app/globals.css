@@ -443,6 +443,7 @@ a { color:inherit; text-decoration:none; }
 .document-bridge h2 { margin:14px 0 8px; font-size:20px; line-height:1.35; }
 .document-bridge p { color:#705d45; font-size:12.5px; line-height:1.65; }
 .document-bridge>small { display:block; margin-top:12px; color:#94836d; font-size:10px; line-height:1.5; }
+.document-advanced-link { display:block; margin-top:12px; text-align:center; color:#925507; font-size:11px; font-weight:750; }
 .document-collab-bar { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:18px; padding:13px 16px; border:1px solid #eed2a6; border-radius:12px; background:#fff8ed; }
 .document-collab-bar>div,.document-collab-bar>a { display:flex; align-items:center; gap:9px; }
 .document-collab-bar svg { color:#ad650a; }
@@ -450,12 +451,41 @@ a { color:inherit; text-decoration:none; }
 .document-collab-bar small { margin-top:3px; color:var(--muted); font-size:10px; }
 .document-collab-bar>a { font-size:12px; font-weight:750; color:#945609; }
 
+/* ── Firestore 공동 협의 문서 ──────────────────────────── */
+.shared-doc-nav { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:18px; }
+.shared-doc-nav>a,.shared-doc-nav>div,.shared-doc-nav>div>a { display:flex; align-items:center; gap:7px; }
+.shared-doc-nav>a { color:var(--muted); font-size:13px; }
+.shared-doc-nav>div { gap:13px; }
+.shared-doc-nav>div>a { color:#955809; font-size:12px; font-weight:750; }
+.shared-doc-head { display:flex; justify-content:space-between; align-items:flex-end; gap:32px; margin-bottom:22px; }
+.shared-doc-head h1 { margin:5px 0 9px; font-size:34px; letter-spacing:-.035em; }
+.shared-doc-head p:not(.eyebrow) { max-width:750px; margin:0; color:var(--muted); line-height:1.65; }
+.shared-doc-layout { display:grid; grid-template-columns:minmax(0,1fr) 350px; gap:18px; align-items:start; padding-bottom:45px; }
+.shared-doc-editor,.shared-doc-agent { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 8px 28px #5d350708; }
+.shared-doc-toolbar,.shared-doc-foot { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 17px; background:#fafaf8; color:var(--muted); font-size:11px; }
+.shared-doc-toolbar { border-bottom:1px solid var(--line); }
+.shared-doc-toolbar>div,.shared-doc-foot>span { display:flex; align-items:center; gap:7px; }
+.sync-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px var(--green-bg); }
+.shared-doc-title { width:calc(100% - 36px); margin:18px 18px 0; padding:0 0 13px; border:0; border-bottom:1px solid var(--line); outline:0; color:var(--ink); font:800 22px/1.35 Pretendard, sans-serif; }
+.shared-doc-content { width:100%; min-height:610px; box-sizing:border-box; padding:22px 25px; resize:vertical; border:0; outline:0; color:#353532; font:14px/1.9 Pretendard, sans-serif; }
+.shared-doc-foot { border-top:1px solid var(--line); }
+.shared-doc-agent { position:sticky; top:92px; max-height:790px; overflow-y:auto; padding:20px; }
+.shared-doc-agent label { display:block; margin-top:17px; font-size:12px; font-weight:750; }
+.shared-doc-agent label textarea { width:100%; min-height:78px; box-sizing:border-box; margin-top:7px; padding:10px; resize:vertical; border:1px solid var(--line); border-radius:10px; outline:0; font:inherit; line-height:1.55; }
+.shared-doc-agent label textarea:focus { border-color:var(--orange); }
+.shared-doc-prompts { display:grid; gap:7px; margin-top:15px; }
+.shared-doc-prompts button { padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:#fff; color:#595955; text-align:left; font-size:11px; line-height:1.45; cursor:pointer; }
+.shared-doc-prompts button:hover { border-color:#e8c38c; background:#fffaf2; }
+.document-alert button,.review-rewrite button { margin-left:auto; border:0; background:transparent; color:#925507; font-weight:800; cursor:pointer; }
+
 @media (max-width:980px) {
   .space-market-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .space-detail-hero,.space-detail-grid,.match-room-layout { grid-template-columns:1fr; }
   .space-detail-summary { padding-bottom:10px; }
   .application-card { position:static; }
   .match-room-side { grid-template-columns:1fr 1fr; }
+  .shared-doc-layout { grid-template-columns:1fr; }
+  .shared-doc-agent { position:static; max-height:none; }
 }
 @media (max-width:650px) {
   .market-head,.match-room-head { align-items:flex-start; flex-direction:column; }
@@ -471,6 +501,10 @@ a { color:inherit; text-decoration:none; }
   .chat-log { height:430px; padding:15px; }
   .chat-message { max-width:88%; }
   .document-collab-bar { align-items:flex-start; flex-direction:column; }
+  .shared-doc-nav,.shared-doc-head { align-items:flex-start; flex-direction:column; }
+  .shared-doc-head h1 { font-size:28px; }
+  .shared-doc-content { min-height:520px; padding:18px; }
+  .shared-doc-foot>span { display:none; }
 }
 
 /* ── 안전 설계 UI: 근거 부족 안내, 규칙 필터 경고, 가격 승인 ─ */

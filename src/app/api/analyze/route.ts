@@ -35,6 +35,15 @@ const analysisSchema = {
   additionalProperties: false,
 } as const;
 
+const locationFallbackSchema = {
+  type: "object",
+  properties: {
+    summary: { type: "string" },
+  },
+  required: ["summary"],
+  additionalProperties: false,
+} as const;
+
 async function normalizeImageUrl(imageUrl: string) {
   if (imageUrl.startsWith("/images/")) {
     const publicRoot = path.resolve(process.cwd(), "public");
@@ -61,6 +70,60 @@ function outputText(response: Record<string, unknown>) {
     }
   }
   return null;
+}
+
+async function enrichFallbackLocation(space: Space, location: LocationContext): Promise<LocationContext> {
+  if (location.source === "vworld") return location;
+  const unresolved: LocationContext = {
+    ...location,
+    summary: `[주변 시설 확인 필요] ${space.region || space.address} · VWorld 조회에 실패해 실제 시설과 거리는 현장 또는 지도에서 확인해야 합니다.`,
+  };
+  if (!process.env.OPENAI_API_KEY) return unresolved;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        store: false,
+        input: [
+          {
+            role: "system",
+            content: [
+              "당신은 대한민국 유휴 공간의 입지 맥락을 보조 분석합니다.",
+              "VWorld 조회가 실패한 상황이므로 주소의 행정구역 수준과 사용자가 준 공간 정보만으로 지역 특성을 2문장 이내로 신중하게 설명하세요.",
+              "실제 지도 조회 결과처럼 시설명, 정확한 거리, 교통 노선, 용도지역을 만들지 마세요.",
+              "확인할 수 없는 내용은 가능성으로 표현하고 지도·현장 확인이 필요하다고 밝히세요.",
+            ].join(" "),
+          },
+          {
+            role: "user",
+            content: `주소: ${space.address}\n지역: ${space.region}\n건물 유형: ${space.buildingType}\n면적: ${space.area}㎡\n현재 상태: ${space.currentStatus}\n설명: ${space.description || "없음"}`,
+          },
+        ],
+        text: { format: { type: "json_schema", name: "location_fallback", strict: true, schema: locationFallbackSchema } },
+        max_output_tokens: 240,
+      }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) throw new Error(`OpenAI location response ${response.status}`);
+    const text = outputText(await response.json() as Record<string, unknown>);
+    if (!text) throw new Error("OpenAI location response did not contain output text");
+    const parsed = JSON.parse(text) as { summary?: unknown };
+    if (typeof parsed.summary !== "string" || !parsed.summary.trim()) throw new Error("OpenAI location summary was empty");
+    return {
+      ...location,
+      source: "openai",
+      status: `openai-fallback:${location.status}`,
+      summary: `[AI 주소 기반 추정] ${parsed.summary.trim().slice(0, 500)}`,
+      facilities: [],
+      landUse: [],
+    };
+  } catch (error) {
+    console.error("OpenAI location fallback failed", error instanceof Error ? error.message : "Unknown error");
+    return unresolved;
+  }
 }
 
 async function hasValidFirebaseSession(request: NextRequest) {
@@ -127,6 +190,7 @@ export async function POST(request: NextRequest) {
     if (!space?.address || !Number.isFinite(space.area)) return NextResponse.json({ error: "Invalid space data" }, { status: 400 });
 
     location = clientLocation(body.location) || await withRetry(() => getLocationContext(space!.address));
+    location = await enrichFallbackLocation(space, location);
 
     // Confidence Threshold: 근거가 부족하면 모델을 호출하지 않고 추가 정보를 요청합니다.
     const confidence = assessConfidence(space, location.source === "vworld");
@@ -147,7 +211,7 @@ export async function POST(request: NextRequest) {
         "추천 활용은 정확히 3개를 만들고 적합도는 0~100 정수로 제시하세요.",
         "금액은 한국 원화 기준의 읽기 쉬운 범위 문자열로 제시하세요.",
         `주소: ${space.address}`,
-        `VWorld 주소 정제 결과: ${location.refinedAddress}`,
+        `주소 확인 결과(${location.source}): ${location.refinedAddress}`,
         `지역: ${space.region}`,
         `면적: ${space.area}㎡`,
         `건물 유형: ${space.buildingType}`,
@@ -155,10 +219,12 @@ export async function POST(request: NextRequest) {
         `시설: ${(space.facilities || []).join(", ") || "정보 없음"}`,
         `알려진 정비 사항: ${space.repairNeeds || "정보 없음"}`,
         `설명: ${space.description || "없음"}`,
-        `VWorld 주변 환경 요약: ${location.summary}`,
-        `VWorld 용도지역 조회: ${location.landUse.join(", ") || "조회 결과 없음"}`,
-        `VWorld 주변 시설 조회: ${location.facilities.map((facility) => `${facility.name}(${facility.category}, ${facility.distanceMeters}m)`).join(", ") || "조회 결과 없음"}`,
-        "VWorld 조회값이 있으면 주변 환경 판단의 우선 근거로 사용하고, 조회되지 않은 사실은 임의로 만들지 마세요.",
+        `주변 환경 근거(${location.source}): ${location.summary}`,
+        `용도지역 조회: ${location.landUse.join(", ") || "조회 결과 없음"}`,
+        `주변 시설 조회: ${location.facilities.map((facility) => `${facility.name}(${facility.category}, ${facility.distanceMeters}m)`).join(", ") || "조회 결과 없음"}`,
+        location.source === "vworld"
+          ? "VWorld 조회값을 주변 환경 판단의 우선 근거로 사용하고, 조회되지 않은 사실은 임의로 만들지 마세요."
+          : "VWorld 실측 근거가 없습니다. AI 주소 기반 추정이라는 표시를 유지하고 정확한 시설명·거리·교통 노선·용도지역을 새로 만들지 마세요.",
       ].join("\n"),
     }];
     images.forEach((imageUrl) => inputContent.push({ type: "input_image", image_url: imageUrl, detail: "low" }));
@@ -177,7 +243,7 @@ export async function POST(request: NextRequest) {
         max_output_tokens: 1400,
       }),
       signal: AbortSignal.timeout(25_000),
-    }).then((result) => { if (!result.ok) throw new Error(`OpenAI response ${result.status}`); return result; }));
+    }).then((result) => { if (!result.ok) throw new Error(`OpenAI response ${result.status}`); return result; }), location.source === "openai" ? 1 : 2);
 
     const response = await apiResponse.json() as Record<string, unknown>;
     const text = outputText(response);
@@ -189,7 +255,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Space analysis failed", error instanceof Error ? error.message : "Unknown error");
     if (space) {
-      const safeLocation = location || await getLocationContext(space.address);
+      const safeLocation = location || await enrichFallbackLocation(space, await getLocationContext(space.address));
       return NextResponse.json({ analysis: fallbackAnalysis(space, safeLocation), source: "fallback", locationSource: safeLocation.source, locationStatus: safeLocation.status });
     }
     return NextResponse.json({ error: "Analysis unavailable" }, { status: 502 });

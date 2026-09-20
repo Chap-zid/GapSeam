@@ -32,8 +32,8 @@ function jsonp(url: string, params: URLSearchParams) {
   });
 }
 
-async function geocode(address: string, key: string, type: "ROAD" | "PARCEL") {
-  const params = new URLSearchParams({ service: "address", request: "getCoord", version: "2.0", crs: "EPSG:4326", address, refine: "true", simple: "false", format: "json", errorFormat: "json", type, key });
+async function geocode(address: string, key: string, type: "ROAD" | "PARCEL", domain: string) {
+  const params = new URLSearchParams({ service: "address", request: "getCoord", version: "2.0", crs: "EPSG:4326", address, refine: "true", simple: "false", format: "json", errorFormat: "json", type, key, domain });
   const response = asRecord(asRecord(await jsonp("https://api.vworld.kr/req/address", params)).response);
   if (response.status !== "OK") throw new Error(`VWorld ${type} address not found`);
   const point = asRecord(asRecord(response.result).point);
@@ -58,8 +58,8 @@ function distanceMeters(origin: Coordinate, longitude: number, latitude: number)
   return Math.round(6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-async function nearestPlace(origin: Coordinate, key: string, category: string) {
-  const params = new URLSearchParams({ service: "search", request: "search", version: "2.0", crs: "EPSG:4326", size: "20", page: "1", query: category, type: "PLACE", bbox: bbox(origin), format: "json", errorFormat: "json", key });
+async function nearestPlace(origin: Coordinate, key: string, category: string, domain: string) {
+  const params = new URLSearchParams({ service: "search", request: "search", version: "2.0", crs: "EPSG:4326", size: "20", page: "1", query: category, type: "PLACE", bbox: bbox(origin), format: "json", errorFormat: "json", key, domain });
   const response = asRecord(asRecord(await jsonp("https://api.vworld.kr/req/search", params)).response);
   if (response.status !== "OK") return null;
   const items = asArray(asRecord(response.result).items).flatMap((raw) => {
@@ -92,14 +92,15 @@ export async function getBrowserLocationEvidence(address: string, token: string)
     if (!configResponse.ok) return null;
     const config = await configResponse.json() as { key?: string; domain?: string };
     if (!config.key) return null;
+    const domain = config.domain || window.location.host;
     let origin: Coordinate;
-    try { origin = await geocode(address, config.key, "ROAD"); }
-    catch { origin = await geocode(address, config.key, "PARCEL"); }
+    try { origin = await geocode(address, config.key, "ROAD", domain); }
+    catch { origin = await geocode(address, config.key, "PARCEL", domain); }
     const [facilityResults, landUseResults] = await Promise.all([
-      Promise.all(["학교", "버스정류장", "편의점"].map((category) => nearestPlace(origin, config.key!, category).catch(() => null))),
+      Promise.all(["학교", "버스정류장", "편의점"].map((category) => nearestPlace(origin, config.key!, category, domain).catch(() => null))),
       Promise.all([
         ["LT_C_UQ111", "도시지역"], ["LT_C_UQ112", "관리지역"], ["LT_C_UQ113", "농림지역"], ["LT_C_UQ114", "자연환경보전지역"],
-      ].map(([id, label]) => landUse(origin, config.key!, config.domain || window.location.host, id, label).catch(() => []))),
+      ].map(([id, label]) => landUse(origin, config.key!, domain, id, label).catch(() => []))),
     ]);
     const facilities = facilityResults.filter((item): item is NonNullable<typeof item> => Boolean(item));
     const uses = [...new Set(landUseResults.flat())];

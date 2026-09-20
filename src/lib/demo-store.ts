@@ -1,4 +1,4 @@
-import type { ChatMessage, Role, Space, SpaceMatch, SpaceRequest, UserProfile } from "./types";
+import type { ChatMessage, MatchDocument, Role, Space, SpaceMatch, SpaceRequest, UserProfile } from "./types";
 
 const KEY = "binteum-ieum-demo";
 const CHANNEL = "binteum-ieum-live";
@@ -9,9 +9,10 @@ type DemoData = {
   requests: SpaceRequest[];
   matches: SpaceMatch[];
   messages: ChatMessage[];
+  documents: MatchDocument[];
 };
 
-const empty = (): DemoData => ({ users: [], spaces: [], requests: [], matches: [], messages: [] });
+const empty = (): DemoData => ({ users: [], spaces: [], requests: [], matches: [], messages: [], documents: [] });
 
 export function readDemo(): DemoData {
   if (typeof window === "undefined") return empty();

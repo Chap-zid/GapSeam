@@ -21,7 +21,7 @@ docker compose up -d
 
 공간 분석은 서버의 `OPENAI_API_KEY`가 있으면 Responses API를 사용하고, 호출 실패 시 Mock 분석으로 자동 전환됩니다. 키에 `NEXT_PUBLIC_` 접두사를 붙이지 마세요. 필요하면 `OPENAI_MODEL`로 모델을 바꿀 수 있으며 기본값은 `gpt-4.1-mini`입니다.
 
-주변 환경은 `VWORD_API_KEY`로 VWorld 주소·장소·2D 데이터 API를 조회합니다. App Hosting에서 VWorld의 서버 요청이 차단되는 경우를 대비해, 로그인 사용자에게만 도메인 제한 키를 전달하고 브라우저 JSONP로 조회하는 경로를 우선 사용합니다. 주소 정제, 반경 2km 내 학교·버스정류장·편의점, 용도지역을 분석 입력에 포함하며 실패하면 샘플 환경 데이터로 전환됩니다.
+주변 환경은 `VWORD_API_KEY`로 VWorld 주소·장소·2D 데이터 API를 조회합니다. App Hosting에서 VWorld의 서버 요청이 차단되는 경우를 대비해, 로그인 사용자에게만 도메인 제한 키를 전달하고 브라우저 JSONP로 조회하는 경로를 우선 사용합니다. 주소 정제, 반경 2km 내 학교·버스정류장·편의점, 용도지역을 분석 입력에 포함합니다. VWorld가 실패하면 OpenAI를 한 번 더 호출해 주소의 행정구역 수준에서 주변 맥락을 보조 추정하고 `AI 주소 기반 추정`으로 표시합니다. 이 보조 경로는 정확한 시설명·거리·용도지역을 만들지 않으며, OpenAI도 실패하면 현장 확인 안내만 제공합니다.
 
 배포 URL: `https://my-web-app--gap-seam.us-east4.hosted.app`
 
@@ -58,7 +58,7 @@ firebase apphosting:secrets:grantaccess VWORD_API_KEY --backend my-web-app --loc
 5. 기기 B: 새 제안이 실시간 표시됨 → `수락`
 6. 기기 A: 연결 현황이 `매칭이 성사되었습니다.`로 즉시 변경됨
 7. 양쪽 기기: 성사된 연결의 전용 채팅방에서 조건 협의
-8. 채팅방의 `공동 문서 열기` → 같은 매칭 문서함에서 DOCX 편집·검토
+8. 채팅방의 `공동 문서 열기` → Firestore로 실시간 공유되는 협의 문서 작성·검토
 
 이용자가 먼저 연결하는 역방향 흐름도 지원합니다.
 
@@ -81,7 +81,8 @@ firebase apphosting:secrets:grantaccess VWORD_API_KEY --backend my-web-app --loc
 ## 실패 대비와 교체 지점
 
 - 이미지 업로드 실패: `/public/images/space-hero.png` 사용
-- OpenAI/Vision/VWorld/비용 분석 실패: 안정적인 샘플 결과 사용
+- OpenAI/Vision/비용 분석 실패: 안정적인 참고 결과 사용
+- VWorld 실패: OpenAI 주소 기반 보조 추정, OpenAI도 실패하면 확인 필요 안내
 - Firebase 미설정: 로그인 기능 비활성. 데이터 계층의 로컬 저장소는 개발용으로만 유지합니다.
 - Firebase 데이터 접근: `src/lib/services.ts`에만 모아 UI와 분리
 
@@ -94,6 +95,7 @@ VWorld 서버 연동은 `src/lib/vworld.ts`, 브라우저 연동은 `src/lib/vwo
 - `requests`: 이용자 공간 수요
 - `matches`: 공간-수요 적합도, 시작 주체와 `proposed | applied | accepted | rejected` 상태
 - `matches/{matchId}/messages`: 성사된 매칭 참여자의 실시간 채팅
+- `matches/{matchId}/documents/shared-plan`: 성사된 매칭 참여자의 실시간 공동 협의 문서
 - `data/documents`: 개발용 DOCX 원본과 매칭별 문서 메타데이터
 
 Firestore `onSnapshot`으로 역할별 `matches`를 구독해 새로고침 없이 상태를 반영합니다.

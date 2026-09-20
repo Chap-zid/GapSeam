@@ -2,7 +2,7 @@ import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, s
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, isFirebaseReady, storage } from "./firebase";
 import { demoId, readDemo, subscribeDemo, writeDemo } from "./demo-store";
-import { SAMPLE_REQUEST, type ChatMessage, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
+import { SAMPLE_REQUEST, type ChatMessage, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
 import { runSpaceAgent } from "./agent-tools";
 import { matchingTool, type MatchResult } from "./matching";
 import { withTimeout } from "./safety";
@@ -94,8 +94,6 @@ export async function sendProposal(space: Space, request: SpaceRequest, match?: 
   // 같은 공간·요청 조합은 항상 같은 문서가 되도록 ID를 고정합니다.
   // 예전처럼 matches를 조회하면 보안 규칙이 요구하는 ownerId 조건이 없어 쿼리가 거부됩니다.
   const id = `${space.id}__${request.id}`;
-  const existing = await getDoc(doc(db, "matches", id));
-  if (existing.data()?.status === "applied") throw new Error("이 이용자가 이미 공간 이용을 신청했습니다. 소유자 대시보드에서 응답해주세요.");
   await withTimeout(setDoc(doc(db, "matches", id), { ...payload, createdAt: serverTimestamp() }, { merge: true }), 12_000, "제안을 보내지 못했습니다. 연결 상태를 확인해주세요.");
 }
 
@@ -109,9 +107,13 @@ export async function applyToSpace(space: Space, request: SpaceRequest, match?: 
     writeDemo({ ...data, matches: [...data.matches, { ...payload, id, createdAt: new Date().toISOString() }] });
     return id;
   }
-  const existing = await getDoc(doc(db, "matches", id));
-  if (existing.exists()) throw new Error("이미 이 공간과 연결 요청이 진행 중입니다.");
-  await withTimeout(setDoc(doc(db, "matches", id), { ...payload, createdAt: serverTimestamp() }), 12_000, "공간 이용 신청을 보내지 못했습니다.");
+  try {
+    await withTimeout(setDoc(doc(db, "matches", id), { ...payload, createdAt: serverTimestamp() }), 12_000, "공간 이용 신청을 보내지 못했습니다.");
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : "";
+    if (code.includes("permission-denied")) throw new Error("이미 진행 중인 연결이 있거나 신청 권한을 확인할 수 없습니다. 대시보드에서 현재 상태를 확인해주세요.");
+    throw error;
+  }
   return id;
 }
 
@@ -160,4 +162,23 @@ export async function sendChatMessage(matchId: string, user: UserProfile, text: 
     return;
   }
   await withTimeout(addDoc(collection(db, "matches", matchId, "messages"), { matchId, senderId: user.uid, senderName: user.name, text: cleaned, createdAt: serverTimestamp() }), 12_000, "메시지를 보내지 못했습니다.");
+}
+
+const SHARED_DOCUMENT_ID = "shared-plan";
+
+export function watchMatchDocument(matchId: string, callback: (item: MatchDocument | null) => void) {
+  if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().documents.find((item) => item.matchId === matchId) || null); emit(); return subscribeDemo(emit); }
+  return onSnapshot(doc(db, "matches", matchId, "documents", SHARED_DOCUMENT_ID), (snapshot) => callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } as MatchDocument : null));
+}
+
+export async function saveMatchDocument(matchId: string, user: UserProfile, title: string, content: string) {
+  const payload = { matchId, title: title.trim().slice(0, 120) || "공간 활용 협의서", content: content.slice(0, 50_000), updatedBy: user.uid, updatedByName: user.name };
+  if (!isFirebaseReady || !db) {
+    const data = readDemo();
+    const current = data.documents.find((item) => item.matchId === matchId);
+    const document: MatchDocument = { ...payload, id: SHARED_DOCUMENT_ID, updatedAt: new Date().toISOString() };
+    writeDemo({ ...data, documents: current ? data.documents.map((item) => item.matchId === matchId ? document : item) : [...data.documents, document] });
+    return;
+  }
+  await withTimeout(setDoc(doc(db, "matches", matchId, "documents", SHARED_DOCUMENT_ID), { ...payload, updatedAt: serverTimestamp() }, { merge: true }), 12_000, "공동 문서를 저장하지 못했습니다.");
 }

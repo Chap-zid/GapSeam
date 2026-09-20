@@ -93,6 +93,27 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Firebase만으로 동작하는 매칭별 공동 협의 문서입니다.
+      match /documents/{documentId} {
+        function parentMatch() { return get(/databases/$(database)/documents/matches/$(matchId)); }
+        function participant() {
+          return signedIn()
+            && parentMatch().data.status == 'accepted'
+            && (parentMatch().data.ownerId == request.auth.uid || parentMatch().data.seekerId == request.auth.uid);
+        }
+        allow read: if participant();
+        allow create, update: if participant()
+          && documentId == 'shared-plan'
+          && request.resource.data.matchId == matchId
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 120
+          && request.resource.data.content is string
+          && request.resource.data.content.size() <= 50000;
+        allow delete: if false;
+      }
+
       allow delete: if false;
     }
   }
