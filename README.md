@@ -15,7 +15,7 @@ npm run dev
 docker compose up -d
 ```
 
-기본 구성은 브라우저 편집기를 `http://localhost:8080`, 편집 결과 콜백을 `http://host.docker.internal:3000`에서 찾습니다. 다른 호스트나 포트를 사용하면 `.env.local`의 `NEXT_PUBLIC_ONLYOFFICE_URL`, `DOCUMENT_SERVER_CALLBACK_ORIGIN`을 변경하세요. 문서는 개발용 로컬 `data/documents`에 저장되므로 운영 배포에서는 인증된 객체 저장소로 교체해야 합니다. HWP/HWPX는 변환 결과 손상을 피하기 위해 자동 변환하지 않으며 DOCX로 변환한 뒤 업로드합니다.
+기본 구성은 브라우저 편집기를 `http://localhost:8080`, 편집 결과 콜백을 `http://host.docker.internal:3000`에서 찾습니다. 다른 호스트나 포트를 사용하면 `.env.local`의 `NEXT_PUBLIC_ONLYOFFICE_URL`, `DOCUMENT_SERVER_CALLBACK_ORIGIN`을 변경하세요. 배포 링크에서 편집기를 쓰려면 인터넷에서 접근 가능한 별도 ONLYOFFICE Document Server를 운영하고, 이 두 변수에 각각 그 공개 주소와 배포 앱의 공개 주소를 설정해야 합니다. Firebase App Hosting은 Docker Compose를 실행하지 않으므로 `localhost:8080`은 배포 링크에서 사용할 수 없습니다. 문서는 개발용 로컬 `data/documents`에 저장되므로 운영 배포에서는 인증된 객체 저장소로 교체해야 합니다. HWP/HWPX는 변환 결과 손상을 피하기 위해 자동 변환하지 않으며 DOCX로 변환한 뒤 업로드합니다.
 
 로그인에는 Firebase 설정과 Google 제공자 활성화가 필요합니다. 로그인 상태는 Firebase Auth로 확인하며 브라우저에 남은 프로필로 로그인 여부를 판단하지 않습니다.
 

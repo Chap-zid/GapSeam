@@ -45,6 +45,15 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NEXT_PUBLIC_ONLYOFFICE_URL
+    value: https://dare-advertising-wearing-awesome.trycloudflare.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: DOCUMENT_SERVER_CALLBACK_ORIGIN
+    value: https://my-web-app--gap-seam.us-east4.hosted.app
+    availability:
+      - RUNTIME
   - variable: OPENAI_MODEL
     value: gpt-4.1-mini
     availability:
