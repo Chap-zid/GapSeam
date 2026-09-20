@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /spaces/{spaceId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /requests/{requestId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.seekerId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.seekerId == request.auth.uid;
+    }
+
+    match /matches/{matchId} {
+      function isOwner() { return signedIn() && resource.data.ownerId == request.auth.uid; }
+      function isSeeker() { return signedIn() && resource.data.seekerId == request.auth.uid; }
+      // 이번 수정으로 바뀌는 필드만 추려냅니다.
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+      // 제안의 주체와 대상은 누구도 바꿀 수 없습니다.
+      function identityKept() {
+        return request.resource.data.spaceId == resource.data.spaceId
+          && request.resource.data.requestId == resource.data.requestId
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.resource.data.seekerId == resource.data.seekerId;
+      }
+
+      allow read: if isOwner() || isSeeker();
+
+      // 제안은 소유자만 생성하며, 반드시 proposed 상태로 시작합니다.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.seekerId is string
+        && request.resource.data.spaceId is string
+        && request.resource.data.requestId is string
+        && request.resource.data.status == 'proposed'
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0 && request.resource.data.score <= 100;
+
+      // 이용자는 status 하나만, 그것도 응답 대기 중일 때만 수락/거절할 수 있습니다.
+      allow update: if isSeeker()
+        && identityKept()
+        && changed().hasOnly(['status'])
+        && resource.data.status == 'proposed'
+        && request.resource.data.status in ['accepted', 'rejected'];
+
+      // 소유자는 아직 응답 전인 제안의 내용만 다시 보낼 수 있습니다. 확정된 매칭은 건드릴 수 없습니다.
+      allow update: if isOwner()
+        && identityKept()
+        && resource.data.status in ['candidate', 'proposed']
+        && request.resource.data.status == 'proposed'
+        && changed().hasOnly(['status', 'score', 'reason', 'approvedPrice', 'createdAt'])
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0 && request.resource.data.score <= 100;
+
+      // 확정된 연결은 기록으로 남기고 삭제하지 않습니다.
+      allow delete: if false;
+    }
+  }
+}

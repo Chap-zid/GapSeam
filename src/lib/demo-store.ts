@@ -1,0 +1,45 @@
+import type { Role, Space, SpaceMatch, SpaceRequest, UserProfile } from "./types";
+
+const KEY = "space-eum-demo";
+const CHANNEL = "space-eum-live";
+
+type DemoData = {
+  users: UserProfile[];
+  spaces: Space[];
+  requests: SpaceRequest[];
+  matches: SpaceMatch[];
+};
+
+const empty = (): DemoData => ({ users: [], spaces: [], requests: [], matches: [] });
+
+export function readDemo(): DemoData {
+  if (typeof window === "undefined") return empty();
+  try { return JSON.parse(localStorage.getItem(KEY) || "null") || empty(); }
+  catch { return empty(); }
+}
+
+export function writeDemo(data: DemoData) {
+  localStorage.setItem(KEY, JSON.stringify(data));
+  window.dispatchEvent(new Event("space-eum-change"));
+  new BroadcastChannel(CHANNEL).postMessage("change");
+}
+
+export function demoId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function getDemoUser(role: Role): UserProfile {
+  const uid = `demo-${role}`;
+  const profile = { uid, role, name: role === "owner" ? "김공간" : "모퉁이 공방" } as UserProfile;
+  const data = readDemo();
+  if (!data.users.some((u) => u.uid === uid)) writeDemo({ ...data, users: [...data.users, profile] });
+  return profile;
+}
+
+export function subscribeDemo(callback: () => void) {
+  const channel = new BroadcastChannel(CHANNEL);
+  const handler = () => callback();
+  channel.onmessage = handler;
+  window.addEventListener("space-eum-change", handler);
+  return () => { channel.close(); window.removeEventListener("space-eum-change", handler); };
+}

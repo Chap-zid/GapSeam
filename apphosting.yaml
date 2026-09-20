@@ -1,0 +1,63 @@
+# Settings for Backend (on Cloud Run).
+# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
+runConfig:
+  minInstances: 0
+  # maxInstances: 100
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
+
+# Public Firebase web configuration is embedded during the Next.js build.
+# OPENAI_API_KEY and VWORD_API_KEY are resolved from Google Cloud Secret Manager at runtime.
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAhAri05GhPsmea4BRi-QAnF1cbk4tntio
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: gap-seam.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: gap-seam
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: gap-seam.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "439342219364"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:439342219364:web:bf464a2823fa7e93ad5f71"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_DEMO_MODE
+    value: "false"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: OPENAI_MODEL
+    value: gpt-4.1-mini
+    availability:
+      - RUNTIME
+  - variable: OPENAI_API_KEY
+    secret: OPENAI_API_KEY
+    availability:
+      - RUNTIME
+  - variable: VWORD_API_KEY
+    secret: VWORD_API_KEY
+    availability:
+      - RUNTIME
+  - variable: VWORD_DOMAIN
+    value: my-web-app--gap-seam.us-east4.hosted.app
+    availability:
+      - RUNTIME
