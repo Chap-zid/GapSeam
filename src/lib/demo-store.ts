@@ -1,7 +1,7 @@
 import type { Role, Space, SpaceMatch, SpaceRequest, UserProfile } from "./types";
 
-const KEY = "space-eum-demo";
-const CHANNEL = "space-eum-live";
+const KEY = "binteum-ieum-demo";
+const CHANNEL = "binteum-ieum-live";
 
 type DemoData = {
   users: UserProfile[];
@@ -20,7 +20,7 @@ export function readDemo(): DemoData {
 
 export function writeDemo(data: DemoData) {
   localStorage.setItem(KEY, JSON.stringify(data));
-  window.dispatchEvent(new Event("space-eum-change"));
+  window.dispatchEvent(new Event("binteum-ieum-change"));
   new BroadcastChannel(CHANNEL).postMessage("change");
 }
 
@@ -40,6 +40,6 @@ export function subscribeDemo(callback: () => void) {
   const channel = new BroadcastChannel(CHANNEL);
   const handler = () => callback();
   channel.onmessage = handler;
-  window.addEventListener("space-eum-change", handler);
-  return () => { channel.close(); window.removeEventListener("space-eum-change", handler); };
+  window.addEventListener("binteum-ieum-change", handler);
+  return () => { channel.close(); window.removeEventListener("binteum-ieum-change", handler); };
 }

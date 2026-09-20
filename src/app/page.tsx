@@ -29,7 +29,7 @@ export default function Home() {
       <div className="trust-item"><ShieldCheck/><div><b>승인 후 안전하게 연결</b><small>소유자가 승인해야 제안이 전송됩니다</small></div></div>
     </div></div>
     <section className="section shell">
-      <div className="section-head"><h2>등록만 하면, 활용 계획부터<br/>실제 연결까지 이어집니다.</h2><p>공간이음은 추천에서 멈추지 않습니다.<br/>분석 결과를 실제 수요와 비교해 다음 행동을 만듭니다.</p></div>
+      <div className="section-head"><h2>등록만 하면, 활용 계획부터<br/>실제 연결까지 이어집니다.</h2><p>빈틈이음은 추천에서 멈추지 않습니다.<br/>분석 결과를 실제 수요와 비교해 다음 행동을 만듭니다.</p></div>
       <div className="steps">
         {[['01','공간 등록','기본 정보와 사진을 올려주세요.'],['02','활용 가능성 분석','상태와 주변 조건을 바탕으로 활용안을 만듭니다.'],['03','실제 수요 탐색','등록된 이용자 요청에서 조건이 맞는 사람을 찾습니다.'],['04','승인 후 연결','제안을 보내고 상대방의 응답을 실시간으로 확인합니다.']].map(([n,t,d])=><div className="step" key={n}><span className="step-num">STEP {n}</span><h3>{t}</h3><p>{d}</p></div>)}
       </div>

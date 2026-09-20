@@ -12,14 +12,14 @@ type SessionValue = {
   logout: () => Promise<void>;
 };
 const SessionContext = createContext<SessionValue | null>(null);
-const ROLE_KEY = "space-eum-pending-role";
+const ROLE_KEY = "binteum-ieum-pending-role";
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    localStorage.removeItem("space-eum-session");
+    localStorage.removeItem("binteum-ieum-session");
     if (!auth || !db) { queueMicrotask(() => setReady(true)); return; }
     let stopProfile = () => {};
     let generation = 0;
@@ -32,12 +32,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (current !== generation) return;
         const saved = snapshot.data();
         if (saved?.role === "owner" || saved?.role === "seeker") {
-          setUser({ uid: account.uid, name: account.displayName || saved.name || "공간이음 회원", role: saved.role, email: account.email || "" });
+          setUser({ uid: account.uid, name: account.displayName || saved.name || "빈틈이음 회원", role: saved.role, email: account.email || "" });
           sessionStorage.removeItem(ROLE_KEY); setReady(true); return;
         }
         const role: Role = sessionStorage.getItem(ROLE_KEY) === "owner" ? "owner" : "seeker";
         try {
-          await setDoc(doc(db!, "users", account.uid), { uid: account.uid, name: account.displayName || "공간이음 회원", role }, { merge: true });
+          await setDoc(doc(db!, "users", account.uid), { uid: account.uid, name: account.displayName || "빈틈이음 회원", role }, { merge: true });
         } catch {
           if (current === generation) { setError("회원 정보를 저장하지 못했습니다. 연결을 확인하고 다시 시도해주세요."); setReady(true); }
         }
@@ -61,7 +61,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
   const logout = useCallback(async () => {
     if (auth) await signOut(auth);
-    localStorage.removeItem("space-eum-session"); sessionStorage.removeItem(ROLE_KEY);
+    localStorage.removeItem("binteum-ieum-session"); sessionStorage.removeItem(ROLE_KEY);
     setUser(null); setError(""); setReady(true);
   }, []);
   return <SessionContext.Provider value={{ user, ready, error, signInGoogle, chooseRole, logout }}>{children}</SessionContext.Provider>;

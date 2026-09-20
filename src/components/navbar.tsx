@@ -19,7 +19,7 @@ export function Navbar() {
   ];
   return <header className="nav-wrap">
     <nav className="nav shell">
-      <Link href="/" className="brand"><span className="brand-mark">공</span>공간이음</Link>
+      <Link href="/" className="brand"><span className="brand-mark">빈</span>빈틈이음</Link>
       <button className="mobile-menu" onClick={() => setOpen(!open)} aria-label="메뉴">{open ? <X /> : <Menu />}</button>
       <div className={`nav-links ${open ? "open" : ""}`}>
         {links.map((l) => <Link onClick={()=>setOpen(false)} className={pathname === l.href ? "active" : ""} href={l.href} key={l.href}>{l.label}</Link>)}

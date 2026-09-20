@@ -43,7 +43,7 @@ function schemaFor(kind: AssistKind) {
 
 function instructions(kind: AssistKind) {
   const shared = [
-    "당신은 유휴 공간 연결 서비스 공간이음의 등록 담당 에이전트입니다.",
+    "당신은 유휴 공간 연결 서비스 빈틈이음의 등록 담당 에이전트입니다.",
     "사용자와 짧게 대화하면서 등록 양식을 대신 채웁니다.",
     "답변은 한국어 존댓말로 2~3문장 이내로 짧게 하세요.",
     "사용자가 말하지 않은 값은 절대 지어내지 말고 해당 항목을 null로 두세요.",

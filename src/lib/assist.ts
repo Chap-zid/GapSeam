@@ -25,8 +25,8 @@ export const REQUIRED_FIELDS: Record<AssistKind, string[]> = {
 };
 
 export const OPENING_LINE: Record<AssistKind, string> = {
-  space: "안녕하세요. 공간이음 에이전트입니다. 어떤 공간인지 편하게 말씀해주세요. 주소, 대략적인 넓이, 지금 상태를 들으면 제가 양식을 채워두겠습니다.",
-  request: "안녕하세요. 공간이음 에이전트입니다. 어떤 공간이 필요하신지 편하게 말씀해주세요. 용도와 지역, 예산을 들으면 제가 요청서를 채워두겠습니다.",
+  space: "안녕하세요. 빈틈이음 에이전트입니다. 어떤 공간인지 편하게 말씀해주세요. 주소, 대략적인 넓이, 지금 상태를 들으면 제가 양식을 채워두겠습니다.",
+  request: "안녕하세요. 빈틈이음 에이전트입니다. 어떤 공간이 필요하신지 편하게 말씀해주세요. 용도와 지역, 예산을 들으면 제가 요청서를 채워두겠습니다.",
 };
 
 export const QUICK_PROMPTS: Record<AssistKind, string[]> = {

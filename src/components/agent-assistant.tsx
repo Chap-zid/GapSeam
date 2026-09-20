@@ -73,11 +73,11 @@ export function AgentAssistant({ kind, values, onFill }: { kind: AssistKind; val
   const missing = missingFields(kind, values);
   const ready = missing.length === 0;
 
-  return <section className="assist-panel" aria-label="공간이음 에이전트 대화">
+  return <section className="assist-panel" aria-label="빈틈이음 에이전트 대화">
     <header className="assist-head">
       <span className="assist-avatar"><Sparkles size={15} /></span>
       <div>
-        <b>공간이음 에이전트</b>
+        <b>빈틈이음 에이전트</b>
         <small>{filling ? "양식을 채우는 중" : busy ? "내용을 검토하는 중" : "대화로 양식을 채워드려요"}</small>
       </div>
       {source && <span className={`engine-badge ${source}`}>{source === "openai" ? "실시간 모델" : "안정 모드"}</span>}

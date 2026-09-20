@@ -13,7 +13,7 @@ function asArray(value: unknown): unknown[] {
 
 function jsonp(url: string, params: URLSearchParams) {
   return new Promise<unknown>((resolve, reject) => {
-    const callback = `__spaceEumVWorld${Date.now()}${Math.random().toString(36).slice(2)}`;
+    const callback = `__binteumIeumVWorld${Date.now()}${Math.random().toString(36).slice(2)}`;
     const registry = window as unknown as Record<string, unknown>;
     const script = document.createElement("script");
     const timeout = window.setTimeout(() => finish(new Error("VWorld browser request timed out")), 7_000);

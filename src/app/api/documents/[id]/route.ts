@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/docu
     editor: {
       document: { fileType: "docx", key: `${id}-${await documentVersion(id)}`, title: document.name, url: `${serverOrigin}/api/documents/${id}/file` },
       documentType: "word",
-      editorConfig: { callbackUrl: `${serverOrigin}/api/documents/${id}/callback`, lang: "ko", mode: "edit", user: { id: "gapseam-user", name: "공간이음 사용자" }, customization: { autosave: true, forcesave: true } },
+      editorConfig: { callbackUrl: `${serverOrigin}/api/documents/${id}/callback`, lang: "ko", mode: "edit", user: { id: "gapseam-user", name: "빈틈이음 사용자" }, customization: { autosave: true, forcesave: true } },
     },
   });
 }
