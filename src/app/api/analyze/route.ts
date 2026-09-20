@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-import type { Analysis, LocationEvidence, Space } from "@/lib/types";
-import { assessConfidence, guardAnalysis, reviewUses, withRetry } from "@/lib/safety";
+import type { LocationEvidence, Space } from "@/lib/types";
+import { assessConfidence, guardAnalysis, withRetry } from "@/lib/safety";
 import { getLocationContext, type LocationContext } from "@/lib/vworld";
 
 export const runtime = "nodejs";
@@ -141,24 +141,6 @@ async function hasValidFirebaseSession(request: NextRequest) {
   } catch { return false; }
 }
 
-function fallbackAnalysis(space: Space, location: LocationContext): Analysis {
-  const review = reviewUses([
-    { name: "소규모 공방", score: 92, reasons: ["독립된 공간", "작업 공간 확보 가능", "인근 생활권 수요 고려"] },
-    { name: "공유 작업실", score: 86, reasons: [`${space.area}㎡의 유연한 평면`, "대중교통 접근성 검토 가능"] },
-    { name: "지역 커뮤니티 공간", score: 78, reasons: ["주변 생활 인프라 활용", "소규모 모임에 적합"] },
-  ], location.landUse);
-  return {
-    condition: "외관 노후도 보통 · 부분 정비 필요",
-    surroundingEnvironment: location.summary,
-    suggestedUses: review.kept,
-    estimatedRepairCost: "450~650만 원",
-    estimatedPrice: "월 35~45만 원",
-    estimatedIncome: "약 480만 원",
-    paybackPeriod: "약 14개월",
-    safetyNotes: review.notes,
-  };
-}
-
 function clientLocation(value: unknown): LocationContext | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Partial<LocationEvidence>;
@@ -197,9 +179,7 @@ export async function POST(request: NextRequest) {
     if (confidence.level === "low" && !body.acknowledgeLowConfidence) {
       return NextResponse.json({ blocked: "low-confidence", confidence, locationSource: location.source, locationStatus: location.status }, { status: 200 });
     }
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ analysis: fallbackAnalysis(space, location), source: "fallback", locationSource: location.source, locationStatus: location.status });
-    }
+    if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "분석 모델이 설정되지 않았습니다." }, { status: 503 });
 
     const images = (await Promise.all((space.imageUrls || []).slice(0, 3).map(normalizeImageUrl))).filter((url): url is string => Boolean(url));
     const inputContent: Array<Record<string, unknown>> = [{
@@ -254,10 +234,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ analysis: guarded.analysis, source: "openai", confidence, locationSource: location.source, locationStatus: location.status, model: process.env.OPENAI_MODEL || "gpt-4.1-mini" });
   } catch (error) {
     console.error("Space analysis failed", error instanceof Error ? error.message : "Unknown error");
-    if (space) {
-      const safeLocation = location || await enrichFallbackLocation(space, await getLocationContext(space.address));
-      return NextResponse.json({ analysis: fallbackAnalysis(space, safeLocation), source: "fallback", locationSource: safeLocation.source, locationStatus: safeLocation.status });
-    }
     return NextResponse.json({ error: "Analysis unavailable" }, { status: 502 });
   }
 }

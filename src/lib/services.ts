@@ -2,7 +2,7 @@ import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, s
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, isFirebaseReady, storage } from "./firebase";
 import { demoId, readDemo, subscribeDemo, writeDemo } from "./demo-store";
-import { SAMPLE_REQUEST, type ChatMessage, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
+import { type ChatMessage, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
 import { runSpaceAgent } from "./agent-tools";
 import { matchingTool, type MatchResult } from "./matching";
 import { withTimeout } from "./safety";
@@ -65,8 +65,7 @@ async function allRequests(): Promise<SpaceRequest[]> {
 // 등록된 모든 요청을 matchingTool로 채점한 뒤 점수순으로 정렬합니다.
 export async function rankRequests(space: Space): Promise<RankedRequest[]> {
   const requests = await allRequests();
-  const pool = requests.length ? requests : [SAMPLE_REQUEST];
-  return pool
+  return requests
     .map((request) => ({ request, match: matchingTool(space, request) }))
     .sort((left, right) => right.match.score - left.match.score);
 }
