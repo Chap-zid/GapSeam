@@ -4,6 +4,14 @@ import { canAccessMatch, getFirebaseSession } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
+function documentServerOrigin(request: NextRequest) {
+  const requestUrl = new URL(request.url);
+  const configuredOrigin = process.env.DOCUMENT_SERVER_CALLBACK_ORIGIN;
+  if (configuredOrigin && !configuredOrigin.includes("0.0.0.0")) return configuredOrigin;
+  if (requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1") return `http://host.docker.internal:${requestUrl.port || "3000"}`;
+  return requestUrl.origin;
+}
+
 export async function GET(request: NextRequest, context: RouteContext<"/api/documents/[id]">) {
   const session = await getFirebaseSession(request);
   if (!session) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -11,8 +19,7 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/docu
   const document = await getDocument(id);
   if (!document) return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
   if (document.matchId && !(await canAccessMatch(session, document.matchId))) return NextResponse.json({ error: "이 공동 문서에 접근할 권한이 없습니다." }, { status: 403 });
-  const origin = new URL(request.url).origin;
-  const serverOrigin = process.env.DOCUMENT_SERVER_CALLBACK_ORIGIN || origin;
+  const serverOrigin = documentServerOrigin(request);
   return NextResponse.json({
     document,
     editor: {
