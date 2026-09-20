@@ -7,6 +7,7 @@ import mammoth from "mammoth";
 
 export type StoredDocument = {
   id: string;
+  ownerId?: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -31,14 +32,14 @@ async function extractText(buffer: Buffer) {
   catch { return ""; }
 }
 
-export async function createDocument(file: File, matchId?: string): Promise<StoredDocument> {
+export async function createDocument(file: File, ownerId: string, matchId?: string): Promise<StoredDocument> {
   const extension = path.extname(file.name).toLowerCase();
   if (extension !== ".docx") throw new Error("DOCX 파일만 편집할 수 있습니다.");
   if (file.size > 15 * 1024 * 1024) throw new Error("파일은 15MB 이하여야 합니다.");
   const bytes = Buffer.from(await file.arrayBuffer());
   const id = randomUUID();
   const now = new Date().toISOString();
-  const document: StoredDocument = { id, name: path.basename(file.name).slice(0, 150), createdAt: now, updatedAt: now, size: bytes.length, text: await extractText(bytes), ...(matchId ? { matchId: matchId.slice(0, 220) } : {}) };
+  const document: StoredDocument = { id, ownerId, name: path.basename(file.name).slice(0, 150), createdAt: now, updatedAt: now, size: bytes.length, text: await extractText(bytes), ...(matchId ? { matchId: matchId.slice(0, 220) } : {}) };
   await ensureRoot();
   await writeFile(filePath(id), bytes, { flag: "wx" });
   await writeFile(metaPath(id), JSON.stringify(document));
@@ -51,14 +52,14 @@ export async function getDocument(id: string): Promise<StoredDocument | null> {
   catch { return null; }
 }
 
-export async function listDocuments(matchId?: string) {
+export async function listDocuments(ownerId: string, matchId?: string) {
   await ensureRoot();
   const names = (await readdir(root)).filter((name) => name.endsWith(".json"));
   const documents = await Promise.all(names.map(async (name) => {
     try { return JSON.parse(await readFile(path.join(root, name), "utf8")) as StoredDocument; }
     catch { return null; }
   }));
-  return documents.filter((item): item is StoredDocument => Boolean(item) && (matchId ? item?.matchId === matchId : !item?.matchId)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 20);
+  return documents.filter((item): item is StoredDocument => Boolean(item) && (matchId ? item?.matchId === matchId : item?.ownerId === ownerId && !item?.matchId)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 20);
 }
 
 export async function readDocumentFile(id: string) {

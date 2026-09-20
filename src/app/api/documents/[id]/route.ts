@@ -19,6 +19,7 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/docu
   const document = await getDocument(id);
   if (!document) return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
   if (document.matchId && !(await canAccessMatch(session, document.matchId))) return NextResponse.json({ error: "이 공동 문서에 접근할 권한이 없습니다." }, { status: 403 });
+  if (!document.matchId && document.ownerId !== session.uid) return NextResponse.json({ error: "이 문서에 접근할 권한이 없습니다." }, { status: 403 });
   const serverOrigin = documentServerOrigin(request);
   return NextResponse.json({
     document,
