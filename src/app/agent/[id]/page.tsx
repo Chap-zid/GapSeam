@@ -2,24 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, BrainCircuit, Check, CircleDollarSign, MapPin, Search, ShieldAlert, Wrench, X } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { AlertTriangle, BrainCircuit, Check, CircleDollarSign, MapPin, Search, ShieldAlert, ShieldCheck, Wrench, X } from "lucide-react";
 import { ConfirmModal, CountUp } from "@/components/ui";
+import { useSession } from "@/components/session-provider";
 import { isGoodMatch } from "@/lib/matching";
 import type { Confidence } from "@/lib/safety";
-import { finishAnalysis, getSpace, rankRequests, sendProposal, type RankedRequest } from "@/lib/services";
+import { finishAnalysis, getOwnerVerification, getSpace, rankRequests, sendProposal, type RankedRequest } from "@/lib/services";
 import { type Space } from "@/lib/types";
 
 const steps = ["공간 기본정보 확인","사진에서 공간 상태 분석","주변 환경 확인","활용 가능한 용도 비교","예상 비용 및 가격 계산","조건이 맞는 이용자 탐색","연결 가능성 검토"];
 
 export default function AgentPage(){
-  const {id}=useParams<{id:string}>(); const router=useRouter(); const [step,setStep]=useState(0); const [space,setSpace]=useState<Space|null>(null); const [candidates,setCandidates]=useState<RankedRequest[]>([]);
+  const {id}=useParams<{id:string}>(); const router=useRouter(); const searchParams=useSearchParams(); const {user}=useSession(); const [step,setStep]=useState(0); const [space,setSpace]=useState<Space|null>(null); const [candidates,setCandidates]=useState<RankedRequest[]>([]); const [verification,setVerification]=useState<Awaited<ReturnType<typeof getOwnerVerification>>>(null);
   const [spaceReady,setSpaceReady]=useState(false);
   const [analysisSource,setAnalysisSource]=useState<"openai"|"fallback"|null>(null); const [locationSource,setLocationSource]=useState<"vworld"|"openai"|"fallback"|null>(null);
   const [blocked,setBlocked]=useState<Confidence|null>(null); const [modal,setModal]=useState(false); const [sending,setSending]=useState(false); const [sendError,setSendError]=useState("");
   const [price,setPrice]=useState(""); const analysisStarted=useRef(false);
 
   useEffect(()=>{ getSpace(id).then(setSpace).finally(()=>setSpaceReady(true)); },[id]);
+  useEffect(()=>{ if(!user)return; void getOwnerVerification(id,user.uid).then(setVerification).catch(()=>setVerification(null)); },[id,user]);
 
   const analyze=useCallback((target:Space,acknowledge:boolean)=>{
     return finishAnalysis(target,acknowledge).then((result)=>{
@@ -52,6 +54,8 @@ export default function AgentPage(){
 
   return <main className="agent-page"><div className="shell">
     <div className="agent-head reveal"><div className="agent-icon">{blocked?<ShieldAlert/>:done?<Check/>:<BrainCircuit/>}</div><p className="eyebrow">빈틈이음 에이전트</p><h1>{blocked?'조금 더 알려주셔야 판단할 수 있어요.':done?'이 공간의 활용 계획을 찾았습니다.':'이 공간의 활용 방법을 찾고 있습니다.'}</h1><p>{subtitle}</p></div>
+    {searchParams.get("verification")==="failed"&&<div className="status-panel waiting"><ShieldAlert/><div><b>공간은 등록됐지만 소유 확인 서류를 제출하지 못했습니다.</b><p>내 공간 대시보드에서 공간을 확인한 뒤 운영자에게 서류 제출 상태를 문의해주세요.</p></div></div>}
+    {verification&&<div className={`status-panel ${verification.status==="verified"?"success":verification.status==="pending"?"waiting":"muted"}`}><ShieldCheck/><div><b>{verification.status==="verified"?"소유자 서류 확인 완료":verification.status==="pending"?"소유자 서류 검토 중":"소유자 서류 보완 필요"}</b><p>{verification.reviewNote|| (verification.status==="pending"?"운영자가 제출 서류의 이름과 공간 정보를 대조하고 있습니다.":verification.status==="verified"?"운영자 검토를 완료했습니다.":"운영자에게 보완 내용을 확인해주세요.")}</p></div></div>}
     <div className="agent-layout"><aside className="timeline-card"><h2>업무 진행 상황</h2><ol className="timeline">{steps.map((label,i)=><li key={label} className={i<step?'done':i===step&&!done?'active':''}><span className="timeline-dot">{i<step&&<Check size={12}/>}</span><span>{label}</span></li>)}</ol></aside>
       <div className="agent-work">
         <section className="discovery"><div className="discovery-head"><Search size={18}/><b>{done?'확인된 공간 정보':'정보를 확인하고 있습니다'}</b>{locationSource&&<span className={`engine-badge ${locationSource==='vworld'||locationSource==='openai'?'openai':'fallback'}`}>{locationSource==='vworld'?'VWorld 주변 데이터':locationSource==='openai'?'AI 주소 기반 추정':'주변 데이터 확인 필요'}</span>}{analysisSource&&!blocked&&<span className={`engine-badge ${analysisSource}`}>{analysisSource==='openai'?'실시간 모델 분석':'분석 확인 필요'}</span>}</div>{step<2?<><div className="skeleton"/><div className="skeleton short"/></>:<div className="finding-grid"><div className="finding"><span>공간 상태</span><b>{blocked?'확인 필요':analysis?.condition || '분석 대기'}</b></div>{step>=3&&<div className="finding"><span>주변 환경</span><b>{blocked?'조회 결과 부족':done?analysis?.surroundingEnvironment || '분석 대기':'등록 주소로 주변 시설을 조회하고 있습니다.'}</b></div>}</div>}</section>

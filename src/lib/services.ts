@@ -1,5 +1,5 @@
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { getBlob, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, isFirebaseReady, storage } from "./firebase";
 import { demoId, readDemo, subscribeDemo, writeDemo } from "./demo-store";
 import { type ChatMessage, type ChatRole, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
@@ -36,6 +36,75 @@ export async function saveSpace(input: Omit<Space, "id" | "createdAt" | "imageUr
   }
   await setDoc(doc(db, "spaces", id), { ...input, imageUrls, createdAt: serverTimestamp() });
   return id;
+}
+
+export async function submitOwnerVerification(spaceId: string, ownerId: string, legalName: string, files: File[]) {
+  if (!isFirebaseReady || !db || !storage) throw new Error("Firebase Storage 설정이 필요합니다.");
+  if (!legalName.trim() || files.length === 0 || files.length > 3) throw new Error("이름과 확인 서류를 입력해주세요.");
+  const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  if (files.some((file) => !allowedTypes.includes(file.type) || file.size > 15 * 1024 * 1024)) throw new Error("PDF 또는 JPG, PNG, WebP 파일을 장당 15MB 이하로 제출해주세요.");
+  const previous = await getDoc(doc(db, "ownerVerifications", spaceId));
+  if (previous.exists() && previous.data().status !== "rejected") throw new Error("이미 제출한 서류가 검토 중이거나 인증 완료 상태입니다.");
+  const proofPaths = await Promise.all(files.map(async (file, index) => {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `ownership-proofs/${ownerId}/${spaceId}/${Date.now()}-${index}-${safeName}`;
+    await uploadBytes(ref(storage!, path), file, { contentType: file.type });
+    return path;
+  }));
+  const verificationRef = doc(db, "ownerVerifications", spaceId);
+  const submission = {
+    spaceId,
+    ownerId,
+    legalName: legalName.trim().slice(0, 100),
+    proofPaths,
+    status: "pending",
+    reviewNote: "",
+    submittedAt: serverTimestamp(),
+  };
+  if (previous.exists()) await updateDoc(verificationRef, submission);
+  else await setDoc(verificationRef, submission);
+}
+
+export async function getOwnerVerification(spaceId: string, ownerId: string) {
+  if (!isFirebaseReady || !db) return null;
+  const snapshot = await getDoc(doc(db, "ownerVerifications", spaceId));
+  if (!snapshot.exists() || snapshot.data().ownerId !== ownerId) return null;
+  const data = snapshot.data();
+  return { status: data.status as "pending" | "verified" | "rejected", reviewNote: typeof data.reviewNote === "string" ? data.reviewNote : "" };
+}
+
+export type OwnerVerificationReview = {
+  id: string;
+  spaceId: string;
+  ownerId: string;
+  legalName: string;
+  proofPaths: string[];
+  status: "pending" | "verified" | "rejected";
+  reviewNote: string;
+  submittedAt: unknown;
+};
+
+export function watchOwnerVerificationQueue(callback: (items: OwnerVerificationReview[]) => void, onError: (error: Error) => void) {
+  if (!db) { onError(new Error("Firebase 연결 설정을 확인해주세요.")); return () => {}; }
+  return onSnapshot(query(collection(db, "ownerVerifications"), orderBy("submittedAt", "desc"), limit(100)), (snapshot) => {
+    callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as OwnerVerificationReview)));
+  }, onError);
+}
+
+export async function loadOwnerProof(spaceId: string, ownerId: string, path: string) {
+  if (!storage || !path.startsWith(`ownership-proofs/${ownerId}/${spaceId}/`)) throw new Error("증빙 파일 경로가 올바르지 않습니다.");
+  const blob = await getBlob(ref(storage, path));
+  return URL.createObjectURL(blob);
+}
+
+export async function reviewOwnerVerification(spaceId: string, reviewerId: string, status: "verified" | "rejected", reviewNote: string) {
+  if (!db) throw new Error("Firebase 연결 설정을 확인해주세요.");
+  await updateDoc(doc(db, "ownerVerifications", spaceId), {
+    status,
+    reviewNote: reviewNote.trim().slice(0, 1000),
+    reviewedBy: reviewerId,
+    reviewedAt: serverTimestamp(),
+  });
 }
 
 export async function finishAnalysis(space: Space, acknowledgeLowConfidence = false) {
@@ -176,12 +245,20 @@ async function writeChatMessage(matchId: string, user: UserProfile, text: string
 
 const SHARED_DOCUMENT_ID = "shared-plan";
 
+function documentVersion(value: unknown) {
+  if (!value || typeof value !== "object") return String(value ?? "");
+  const timestamp = value as { seconds?: number; nanoseconds?: number; toMillis?: () => number };
+  if (typeof timestamp.seconds === "number") return `${timestamp.seconds}.${timestamp.nanoseconds || 0}`;
+  if (typeof timestamp.toMillis === "function") return String(timestamp.toMillis());
+  return JSON.stringify(value);
+}
+
 export function watchMatchDocument(matchId: string, callback: (item: MatchDocument | null) => void) {
   if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().documents.find((item) => item.matchId === matchId) || null); emit(); return subscribeDemo(emit); }
   return onSnapshot(doc(db, "matches", matchId, "documents", SHARED_DOCUMENT_ID), (snapshot) => callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } as MatchDocument : null));
 }
 
-export async function saveMatchDocument(matchId: string, user: UserProfile, title: string, content: string) {
+export async function saveMatchDocument(matchId: string, user: UserProfile, title: string, content: string, expectedVersion = "") {
   const payload = { matchId, title: title.trim().slice(0, 120) || "공간 활용 협의서", content: content.slice(0, 50_000), updatedBy: user.uid, updatedByName: user.name };
   if (!isFirebaseReady || !db) {
     const data = readDemo();
@@ -190,5 +267,11 @@ export async function saveMatchDocument(matchId: string, user: UserProfile, titl
     writeDemo({ ...data, documents: current ? data.documents.map((item) => item.matchId === matchId ? document : item) : [...data.documents, document] });
     return;
   }
-  await withTimeout(setDoc(doc(db, "matches", matchId, "documents", SHARED_DOCUMENT_ID), { ...payload, updatedAt: serverTimestamp() }, { merge: true }), 12_000, "공동 문서를 저장하지 못했습니다.");
+  const reference = doc(db, "matches", matchId, "documents", SHARED_DOCUMENT_ID);
+  await withTimeout(runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const currentVersion = snapshot.exists() ? documentVersion(snapshot.data().updatedAt) : "";
+    if (currentVersion !== expectedVersion) throw new Error("상대방이 새 버전을 저장했습니다. 새 버전을 불러온 뒤 다시 저장해주세요.");
+    transaction.set(reference, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+  }), 12_000, "공동 문서를 저장하지 못했습니다.");
 }

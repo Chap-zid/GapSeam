@@ -1,0 +1,10 @@
+[
+  {
+    "origin": [
+      "https://my-web-app--gap-seam.us-east4.hosted.app"
+    ],
+    "method": ["GET"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

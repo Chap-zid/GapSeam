@@ -44,6 +44,39 @@ firebase use <project-id>
 firebase deploy --only firestore:rules,storage
 ```
 
+공간 등록 시 소유자 확인을 선택하면 법적 이름과 등기사항증명서·토지대장·건축물대장 등의 자료를 비공개 Storage 경로에 제출합니다. 주민등록번호 등 불필요한 식별정보는 가린 뒤 올리도록 안내하며 자료는 공개 공간 문서와 분리됩니다. 운영자는 `/admin/verification`에서 제출 자료를 열람하고 소유자 이름·공간 소재지 대조 근거를 기록해 확인 또는 보완 요청을 결정합니다. 소유자는 제출과 본인 상태 조회만 가능하고 검토 상태는 Firebase 규칙에서 차단됩니다. 반려 상태에서는 보완 자료를 다시 제출할 수 있습니다.
+
+관리자 화면을 활성화하려면 신뢰할 수 있는 서버 또는 보호된 Cloud Shell에서 Firebase Admin SDK로 운영자 UID에 `admin: true` 커스텀 클레임을 설정하세요. 사용자 프로필의 `role` 값은 사용자가 직접 변경할 수 있으므로 관리자 권한으로 사용하지 않습니다.
+
+```ts
+import { applicationDefault, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+
+initializeApp({ credential: applicationDefault(), projectId: "gap-seam" });
+const auth = getAuth();
+const user = await auth.getUser("운영자_UID");
+await auth.setCustomUserClaims(user.uid, { ...user.customClaims, admin: true });
+```
+
+서비스 계정 키를 저장소나 브라우저에 두지 마세요. 클레임 설정 후 운영자는 로그아웃했다가 다시 로그인해야 새 토큰을 받습니다. 권한 회수 시 기존 커스텀 클레임에서 `admin`을 제거한 뒤 토큰을 갱신하세요. 관리 화면은 최신 제출 100건을 표시합니다.
+
+관리자 미리보기는 Storage SDK의 인증된 `getBlob` 다운로드를 사용하므로 버킷 CORS 설정이 필요합니다. 프로젝트에 `gcloud` 인증을 구성한 뒤 다음을 적용하세요.
+
+```bash
+gcloud storage buckets update gs://gap-seam.firebasestorage.app --cors-file=storage.cors.json --project=gap-seam
+```
+
+운영 전 서류 보존·삭제 기간을 정하고, 운영자 계정을 최소 인원으로 제한하세요. 이 검토는 제출 서류의 이름·소재지 대조 기록이며 법률상 권리 또는 실제 소유권을 보증하지 않습니다.
+
+## 설계 근거와 운영 가이드
+
+- 관리자 권한은 Firebase Auth 커스텀 클레임과 Firestore·Storage 규칙에서 함께 검사합니다. 화면의 접근 제한만으로는 데이터 접근을 보호할 수 없기 때문입니다.
+- 신분·소유 증빙은 공개 공간 문서와 분리된 `ownership-proofs` 경로에 저장하고, 인증된 SDK 다운로드로만 미리 봅니다. 공개 다운로드 URL을 문서나 로그에 남기지 않습니다.
+- 이름·주소·서류를 운영자가 직접 대조하고 근거를 남기는 방식은 공공 API만으로 소유권을 단정하지 않기 위한 1차 검토 절차입니다. 확인 상태도 법적 소유권 보증으로 표현하지 않습니다.
+- 채팅 에이전트는 협의 질문과 다음 행동을 제안하되 계약·법률 판단을 대신하지 않습니다. AI 검토 요청 시 공간 정보와 최근 대화가 전달될 수 있으므로 화면에서 이를 고지합니다.
+- 공동 문서는 Firestore 실시간 버전과 저장 트랜잭션을 함께 써서 동시 편집 내용을 조용히 덮어쓰지 않게 합니다.
+- 소유 확인 운영 순서: 대기 제출 선택 → 서류 미리보기 → 서류상 이름과 공간 소재지 대조 → 근거 메모 작성 → 확인 완료 또는 보완 요청 → 보완 요청 시 새 자료 재제출.
+
 Firebase App Hosting에 `npx firebase deploy --only apphosting:my-web-app --project gap-seam`으로 배포합니다. 공개 환경 변수와 서버 비밀은 `apphosting.yaml`에서 관리합니다.
 
 VWorld 키를 배포 환경에 처음 추가할 때는 Secret 생성과 백엔드 접근 권한 부여가 모두 필요합니다.

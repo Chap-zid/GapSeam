@@ -35,6 +35,7 @@ export default function MatchChatPage() {
   const [brokerSource, setBrokerSource] = useState<"openai" | "fallback" | null>(null);
   const [nextSteps, setNextSteps] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const composeRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => { if (!user) return; return watchMatch(id, setMatch); }, [id, user]);
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function MatchChatPage() {
       {messages.length === 0 ? <div className="chat-empty"><Users/><b>첫 메시지를 보내보세요.</b><p>방문 일정, 이용료, 정비 범위처럼 합의가 필요한 내용을 대화로 정리할 수 있습니다. 중개 에이전트에게 진행 정리를 맡길 수도 있습니다.</p></div> : messages.map((message) => message.role === "agent"
         ? <div className="chat-broker" key={message.id}><div className="chat-broker-head"><Handshake size={15}/><b>{message.senderName || BROKER_NAME}</b><time>{timeLabel(message.createdAt)}</time></div><p>{message.text}</p><small>중개 진행을 돕는 안내이며, 법률 판단이나 계약 확정이 아닙니다.</small></div>
         : <div className={`chat-message ${message.senderId === user.uid ? "mine" : "theirs"}`} key={message.id}><div><b>{message.senderId === user.uid ? "나" : message.senderName}</b><time>{timeLabel(message.createdAt)}</time></div><p>{message.text}</p></div>)}<div ref={endRef}/>
-    </div>{error && <p className="login-error chat-error" role="alert">{error}</p>}<form className="chat-compose" onSubmit={submit}><textarea value={text} onChange={(event) => setText(event.target.value)} maxLength={1000} placeholder="상대방에게 보낼 메시지를 입력하세요."/><button className="button" disabled={sending || !text.trim()} aria-label="메시지 보내기"><Send size={18}/></button></form></section>
+    </div>{error && <p className="login-error chat-error" role="alert">{error}</p>}<form ref={composeRef} className="chat-compose" onSubmit={submit}><textarea value={text} onChange={(event) => setText(event.target.value)} onKeyDown={(event) => { if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();composeRef.current?.requestSubmit();} }} maxLength={1000} placeholder="메시지 입력 · Enter 전송 · Shift+Enter 줄바꿈"/><button className="button" disabled={sending || !text.trim()} aria-label="메시지 보내기"><Send size={18}/></button></form></section>
 
       <aside className="match-room-side">
         <section className="broker-card">

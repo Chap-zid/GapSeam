@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
 
     match /users/{userId} {
       allow read: if signedIn();
@@ -13,6 +14,39 @@ service cloud.firestore {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /ownerVerifications/{spaceId} {
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+      allow read: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.spaceId == spaceId
+        && request.resource.data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/spaces/$(spaceId)).data.ownerId == request.auth.uid
+        && request.resource.data.legalName is string
+        && request.resource.data.legalName.size() > 0
+        && request.resource.data.proofPaths is list
+        && request.resource.data.proofPaths.size() > 0
+        && request.resource.data.status == 'pending';
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && resource.data.status == 'rejected'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.spaceId == spaceId
+        && request.resource.data.legalName is string
+        && request.resource.data.proofPaths is list
+        && request.resource.data.proofPaths.size() > 0
+        && changed().hasOnly(['legalName', 'proofPaths', 'status', 'reviewNote', 'submittedAt']);
+      allow update: if isAdmin()
+        && resource.data.status in ['pending', 'rejected']
+        && request.resource.data.status in ['verified', 'rejected']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.reviewNote is string
+        && request.resource.data.reviewNote.size() <= 1000
+        && changed().hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedAt']);
+      allow delete: if false;
     }
 
     match /requests/{requestId} {

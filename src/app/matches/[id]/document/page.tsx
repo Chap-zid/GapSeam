@@ -37,6 +37,14 @@ function updatedLabel(value: unknown) {
   return Number.isNaN(date.getTime()) ? "방금 저장됨" : date.toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function versionKey(value: unknown) {
+  if (!value || typeof value !== "object") return String(value ?? "");
+  const timestamp = value as { seconds?: number; nanoseconds?: number; toMillis?: () => number };
+  if (typeof timestamp.seconds === "number") return `${timestamp.seconds}.${timestamp.nanoseconds || 0}`;
+  if (typeof timestamp.toMillis === "function") return String(timestamp.toMillis());
+  return JSON.stringify(value);
+}
+
 export default function MatchDocumentPage() {
   const { id } = useParams<{ id: string }>();
   const { user, ready } = useSession();
@@ -46,6 +54,7 @@ export default function MatchDocumentPage() {
   const [content, setContent] = useState(TEMPLATE);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
+  const remoteVersion = useRef("");
   const [remotePending, setRemotePending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -59,20 +68,21 @@ export default function MatchDocumentPage() {
     return watchMatchDocument(id, (item) => {
       setRemote(item);
       if (!item) return;
-      if (dirtyRef.current && item.updatedBy !== user.uid) { setRemotePending(true); return; }
+      if (dirtyRef.current && versionKey(item.updatedAt) !== remoteVersion.current) { setRemotePending(true); return; }
+      remoteVersion.current = versionKey(item.updatedAt);
       setTitle(item.title); setContent(item.content || TEMPLATE); setRemotePending(false);
     });
   }, [id, match?.status, user]);
 
   function loadRemote() {
     if (!remote) return;
-    setTitle(remote.title); setContent(remote.content || TEMPLATE); dirtyRef.current = false; setDirty(false); setRemotePending(false);
+    setTitle(remote.title); setContent(remote.content || TEMPLATE); remoteVersion.current = versionKey(remote.updatedAt); dirtyRef.current = false; setDirty(false); setRemotePending(false);
   }
 
   async function save() {
     if (!user || !match || saving) return;
     setSaving(true); setError("");
-    try { await saveMatchDocument(id, user, title, content); dirtyRef.current = false; setDirty(false); setRemotePending(false); }
+    try { await saveMatchDocument(id, user, title, content, remoteVersion.current); dirtyRef.current = false; setDirty(false); setRemotePending(false); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "공동 문서를 저장하지 못했습니다."); }
     finally { setSaving(false); }
   }

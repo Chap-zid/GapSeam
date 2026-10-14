@@ -3,19 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, UserRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { auth } from "@/lib/firebase";
 import { useSession } from "./session-provider";
 
 export function Navbar() {
   const { user, ready } = useSession();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const dashboard = user?.role === "owner" ? "/owner/dashboard" : "/seeker/dashboard";
+  useEffect(() => {
+    let active = true;
+    if (!user || !auth?.currentUser) return;
+    void auth.currentUser.getIdTokenResult().then((token) => { if (active) setIsAdmin(token.claims.admin === true); }).catch(() => { if (active) setIsAdmin(false); });
+    return () => { active = false; };
+  }, [user]);
   const links = [
     { href: "/spaces", label: "공간 찾기" },
     { href: "/owner/new", label: "내 공간 등록" },
     { href: "/request/new", label: "공간 요청 등록" },
     { href: "/documents", label: "문서 도우미" },
+    ...(user && isAdmin ? [{ href: "/admin/verification", label: "소유자 서류 검토" }] : []),
   ];
   return <header className="nav-wrap">
     <nav className="nav shell">
