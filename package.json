@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "verify": "npm run lint && npm run build"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "@google-cloud/storage": "^8.2.0",

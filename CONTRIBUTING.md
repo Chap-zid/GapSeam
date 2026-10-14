@@ -49,13 +49,30 @@ VWorld 키는 도메인 제한이 걸립니다. 로컬에서 주소 조회를 �
 ## 3. 작업 흐름
 
 ```bash
+git pull                             # 남이 올린 변경을 먼저 받습니다
+npm install                          # 의존성이 바뀌었을 수 있습니다
 git switch -c feat/무엇을-하는지     # main에 직접 커밋하지 않습니다
 # ... 작업 ...
-npm run lint && npm run build        # 올리기 전에 반드시 통과시킵니다
+npm run verify                       # lint + build. 올리기 전에 반드시 통과시킵니다
 git push -u origin feat/무엇을-하는지
 ```
 
-GitHub에서 PR을 올리면 CI가 lint·타입 검사·빌드를 돌립니다. 통과하면 머지할 수 있습니다.
+GitHub에서 PR을 올리면 CI가 lint와 빌드를 돌립니다. 통과하면 머지할 수 있습니다.
+
+### 자주 걸리는 것
+
+- **`pull` 후 타입 오류가 쏟아진다** → `npm install`을 안 한 경우입니다. 의존성이 추가됐을 수 있습니다.
+- **`npx tsc --noEmit`이 `RouteContext`를 못 찾는다** → 정상입니다. 이 타입은 `next build`가 생성하므로
+  빌드 전에는 없습니다. 타입 검사는 `npm run build`로 하세요.
+- **내가 바꾸지 않은 파일이 전부 변경됨으로 보인다** → 줄바꿈 문제입니다. `.gitattributes`가 LF로
+  고정하고 있으니, 그래도 생기면 `git add --renormalize .`을 실행해주세요.
+- **Node 버전** → 20.9 이상이 필요하고 CI는 22를 씁니다. `.nvmrc`가 있으니 `nvm use`로 맞출 수 있습니다.
+
+### CI는 오류를 막아주지 않습니다
+
+CI는 푸시된 다음에 돌아서 결과를 알려줄 뿐, 잘못된 코드가 들어가는 것을 되돌리지는 않습니다.
+**`main` 보호 규칙(PR 필수 + CI 통과 필수)이 설정되어야** 비로소 "통과하지 않은 코드는 main에 못 들어감"이
+됩니다. 아래 7절을 참고해 관리자가 먼저 설정해주세요.
 
 **main에 머지되면 자동으로 배포됩니다.** 보안 규칙(`firestore.rules`, `storage.rules`)과
 App Hosting이 함께 올라갑니다. 즉 머지가 곧 배포이므로, main에 넣기 전에 한 번 더 확인해주세요.

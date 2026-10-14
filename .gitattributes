@@ -1,0 +1,22 @@
+# 저장소에는 항상 LF로 저장합니다.
+# Windows와 macOS 팀원이 섞여도 줄바꿈 때문에 파일 전체가 바뀐 것처럼 보이지 않습니다.
+* text=auto eol=lf
+
+# 생성물은 diff와 병합 대상에서 제외합니다.
+package-lock.json -diff linguist-generated
+
+# 바이너리는 줄바꿈을 건드리지 않습니다.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.docx binary
+*.hwp binary
+*.hwpx binary
