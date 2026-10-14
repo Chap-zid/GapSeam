@@ -84,9 +84,11 @@ service cloud.firestore {
             && (parentMatch().data.ownerId == request.auth.uid || parentMatch().data.seekerId == request.auth.uid);
         }
         allow read: if participant();
+        // role이 agent인 메시지는 중개 에이전트 발언이며, 요청한 참여자 계정으로 기록됩니다.
         allow create: if participant()
           && request.resource.data.matchId == matchId
           && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.role in ['owner', 'seeker', 'agent']
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 1000;

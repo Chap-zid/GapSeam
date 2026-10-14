@@ -71,11 +71,15 @@ export type SpaceMatch = {
   createdAt: unknown;
 };
 
+export type ChatRole = "owner" | "seeker" | "agent";
+
 export type ChatMessage = {
   id: string;
   matchId: string;
   senderId: string;
   senderName: string;
+  // agent는 중개 에이전트의 발언입니다. 양측이 같은 내용을 봅니다.
+  role?: ChatRole;
   text: string;
   createdAt: unknown;
 };

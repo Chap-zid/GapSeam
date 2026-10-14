@@ -2,7 +2,8 @@ import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, s
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, isFirebaseReady, storage } from "./firebase";
 import { demoId, readDemo, subscribeDemo, writeDemo } from "./demo-store";
-import { type ChatMessage, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
+import { type ChatMessage, type ChatRole, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
+import { BROKER_NAME } from "./broker";
 import { runSpaceAgent } from "./agent-tools";
 import { matchingTool, type MatchResult } from "./matching";
 import { withTimeout } from "./safety";
@@ -152,15 +153,25 @@ export function watchChat(matchId: string, callback: (items: ChatMessage[]) => v
 }
 
 export async function sendChatMessage(matchId: string, user: UserProfile, text: string) {
+  return writeChatMessage(matchId, user, text, user.role);
+}
+
+// 중개 에이전트 발언도 같은 대화 기록에 남겨 양측이 동일한 내용을 보도록 합니다.
+export async function sendBrokerMessage(matchId: string, user: UserProfile, text: string) {
+  return writeChatMessage(matchId, user, text, "agent", BROKER_NAME);
+}
+
+async function writeChatMessage(matchId: string, user: UserProfile, text: string, role: ChatRole, displayName?: string) {
   const cleaned = text.trim().slice(0, 1_000);
   if (!cleaned) return;
+  const senderName = displayName || user.name;
   if (!isFirebaseReady || !db) {
     const data = readDemo();
-    const message: ChatMessage = { id: demoId("message"), matchId, senderId: user.uid, senderName: user.name, text: cleaned, createdAt: new Date().toISOString() };
+    const message: ChatMessage = { id: demoId("message"), matchId, senderId: user.uid, senderName, role, text: cleaned, createdAt: new Date().toISOString() };
     writeDemo({ ...data, messages: [...data.messages, message] });
     return;
   }
-  await withTimeout(addDoc(collection(db, "matches", matchId, "messages"), { matchId, senderId: user.uid, senderName: user.name, text: cleaned, createdAt: serverTimestamp() }), 12_000, "메시지를 보내지 못했습니다.");
+  await withTimeout(addDoc(collection(db, "matches", matchId, "messages"), { matchId, senderId: user.uid, senderName, role, text: cleaned, createdAt: serverTimestamp() }), 12_000, "메시지를 보내지 못했습니다.");
 }
 
 const SHARED_DOCUMENT_ID = "shared-plan";
