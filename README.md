@@ -2,10 +2,14 @@
 
 방치된 공가의 활용 가능성을 분석하고 실제 공간 수요와 비교해, 소유자와 이용자 어느 쪽에서도 연결을 시작할 수 있는 해커톤 프로토타입입니다.
 
+**함께 개발하신다면 [CONTRIBUTING.md](CONTRIBUTING.md)부터 읽어주세요.** 환경 변수 받는 법, 작업·배포 흐름,
+같은 Firebase를 공유할 때 주의할 점, 무너뜨리면 안 되는 설계 원칙이 정리되어 있습니다.
+
 ## 실행
 
 ```bash
 npm install
+cp .env.example .env.local   # NEXT_PUBLIC_DEMO_MODE=true 로 두면 키 없이도 전체 화면이 동작합니다
 npm run dev
 ```
 

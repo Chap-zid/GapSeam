@@ -1,0 +1,69 @@
+name: Deploy
+
+# main에 머지되면 배포합니다. 사람마다 Firebase 키를 나눠주지 않고
+# 저장소 권한만으로 배포가 되도록 하는 구조입니다.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      # 배포 전에 한 번 더 검증합니다. 깨진 코드가 운영에 올라가지 않게 합니다.
+      - name: Lint
+        run: npm run lint
+
+      - name: 빌드 검증
+        run: npm run build
+        env:
+          NEXT_PUBLIC_DEMO_MODE: "true"
+
+      - name: 서비스 계정 확인
+        id: creds
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT 시크릿이 없어 배포를 건너뜁니다. CONTRIBUTING.md의 배포 설정을 참고하세요."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 인증 파일 작성
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$KEY" > "$RUNNER_TEMP/gcp-key.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/gcp-key.json" >> "$GITHUB_ENV"
+
+      # Firestore·Storage 규칙은 App Hosting 배포에 포함되지 않으므로 따로 올립니다.
+      - name: 보안 규칙 배포
+        if: steps.creds.outputs.ready == 'true'
+        run: npx firebase deploy --only firestore:rules,storage --project gap-seam --non-interactive
+
+      - name: App Hosting 배포
+        if: steps.creds.outputs.ready == 'true'
+        run: npx firebase deploy --only apphosting:my-web-app --project gap-seam --non-interactive
+
+      - name: 인증 파일 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/gcp-key.json"
