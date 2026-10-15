@@ -137,11 +137,29 @@ for ROLE in roles/firebasehosting.admin roles/firebaseapphosting.admin \
   gcloud projects add-iam-policy-binding gap-seam --member="serviceAccount:$SA" --role="$ROLE"
 done
 
+# App Hosting 백엔드는 실행 전용 계정으로 동작합니다.
+# 배포 계정이 그 계정을 대행할 수 있어야 롤아웃이 생성됩니다.
+# 이 줄을 빼면 배포가 iam.serviceAccounts.actAs denied 로 실패합니다.
+# 프로젝트 전체가 아니라 이 서비스 계정 하나에만 부여합니다.
+gcloud iam service-accounts add-iam-policy-binding \
+  firebase-app-hosting-compute@gap-seam.iam.gserviceaccount.com \
+  --member="serviceAccount:$SA" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=gap-seam
+
 # 키 발급 후 GitHub Secret에 등록
 gcloud iam service-accounts keys create key.json --iam-account "$SA"
 # GitHub → Settings → Secrets and variables → Actions →
 #   New repository secret → 이름 FIREBASE_SERVICE_ACCOUNT, 값은 key.json 전체 내용
 rm key.json   # 등록 후 로컬 파일은 지웁니다
+```
+
+키 값은 발급 화면에서 GitHub 입력창으로 바로 옮기고, 채팅·이슈·문서 어디에도 남기지 마세요.
+실수로 노출했다면 해당 키를 폐기하고 새로 발급합니다.
+
+```bash
+gcloud iam service-accounts keys list --iam-account "$SA"
+gcloud iam service-accounts keys delete <KEY_ID> --iam-account "$SA"
 ```
 
 **직접 배포까지 맡기려면** Firebase Console → 사용자 및 권한에서 팀원을 편집자로 추가하고,
