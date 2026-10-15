@@ -30,7 +30,7 @@ export default function RequestFormPage() {
   }
   return <main className="page"><div className="shell">
     <div className="page-head reveal"><p className="eyebrow">공간 수요 등록</p><h1>필요한 공간을 알려주세요</h1><p>직접 입력하셔도 되고, 오른쪽 에이전트에게 말로 설명하셔도 됩니다.</p></div>
-    <form className="form-layout" onSubmit={submit}><div className="form-card reveal">
+    <div className="form-layout"><form className="form-card reveal" onSubmit={submit}>
       <section className="form-section"><h2>어떤 공간이 필요한가요?</h2><div className="form-grid">
         <div className={`${cls('purpose')} full`}><label>공간 활용 목적 <span className="required">*</span></label><input name="purpose" value={form.purpose} onChange={(e)=>set('purpose',e.target.value)} placeholder="예: 도자기 공방" required/></div>
         <div className={`${cls('description')} full`}><label>필요한 공간 설명</label><textarea name="description" value={form.description} onChange={(e)=>set('description',e.target.value)} placeholder="예: 4명이 사용할 도자기 공방을 찾고 있습니다. 작업과 소규모 클래스를 함께 진행할 예정입니다."/></div>
@@ -44,6 +44,6 @@ export default function RequestFormPage() {
         <div className={`${cls('period')} full`}><label>희망 이용 기간</label><select name="period" value={form.period} onChange={(e)=>set('period',e.target.value)}><option value="">선택해주세요</option>{PERIODS.map((v)=><option key={v}>{v}</option>)}</select></div>
       </div></section>
       {error&&<p className="login-error" role="alert">{error}</p>}<button className="button form-submit" disabled={saving}>{saving?'요청을 등록하고 있습니다...':'공간 요청 등록하기'}</button>
-    </div><div className="form-aside"><AgentAssistant kind="request" values={{purpose:form.purpose,description:form.description,region:form.region,minArea:Number(form.minArea)||undefined,maxArea:Number(form.maxArea)||undefined,maxBudget:Number(form.maxBudget)||undefined,people:Number(form.people)||undefined,period:form.period}} onFill={fill}/><aside className="side-card reveal delay-2"><div className="role-icon"><FileText/></div><h3>등록하면 이렇게 진행돼요</h3><ul><li><Check size={17}/>입력한 조건이 구조화되어 저장됩니다.</li><li><Check size={17}/>새 공간이 등록되면 조건을 자동으로 비교합니다.</li><li><Check size={17}/>소유자가 승인한 제안만 전달됩니다.</li><li><Check size={17}/>수락 전에는 연락처가 공개되지 않습니다.</li></ul></aside></div></form>
+    </form><div className="form-aside"><AgentAssistant kind="request" values={{purpose:form.purpose,description:form.description,region:form.region,minArea:Number(form.minArea)||undefined,maxArea:Number(form.maxArea)||undefined,maxBudget:Number(form.maxBudget)||undefined,people:Number(form.people)||undefined,period:form.period}} onFill={fill}/><aside className="side-card reveal delay-2"><div className="role-icon"><FileText/></div><h3>등록하면 이렇게 진행돼요</h3><ul><li><Check size={17}/>입력한 조건이 구조화되어 저장됩니다.</li><li><Check size={17}/>새 공간이 등록되면 조건을 자동으로 비교합니다.</li><li><Check size={17}/>소유자가 승인한 제안만 전달됩니다.</li><li><Check size={17}/>수락 전에는 연락처가 공개되지 않습니다.</li></ul></aside></div></div>
   </div></main>;
 }
