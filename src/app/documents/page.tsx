@@ -29,13 +29,21 @@ function DocumentsContent() {
   const [loading, setLoading] = useState(true); const [uploading, setUploading] = useState(false); const [error, setError] = useState("");
   const [instruction, setInstruction] = useState(""); const [selection, setSelection] = useState(""); const [review, setReview] = useState<Review | null>(null); const [reviewing, setReviewing] = useState(false);
   const editor = useRef<{ destroyEditor: () => void } | null>(null);
+  const openRequest = useRef(0);
 
   const openDocument = useCallback(async (item: DocumentItem) => {
-    setCurrent(item); setReview(null); setError("");
-    const response = await fetch(`/api/documents/${item.id}`, { cache: "no-store", headers: await authHeaders() });
-    const data = await response.json();
-    if (!response.ok) { setError(data.error || "문서를 열지 못했습니다."); return; }
-    setConfig(data.editor);
+    const requestId = ++openRequest.current;
+    setReview(null); setError(""); setConfig(null); setCurrent(null);
+    try {
+      const response = await fetch(`/api/documents/${item.id}`, { cache: "no-store", headers: await authHeaders() });
+      const data = await response.json() as { editor?: EditorConfig; error?: string };
+      if (requestId !== openRequest.current) return;
+      if (!response.ok) throw new Error(data.error || "문서를 열지 못했습니다.");
+      if (!data.editor || typeof data.editor !== "object") throw new Error("문서 편집 설정을 받지 못했습니다. 다시 시도해주세요.");
+      setCurrent(item); setConfig(data.editor);
+    } catch (reason) {
+      if (requestId === openRequest.current) setError(reason instanceof Error ? reason.message : "문서를 여는 중 연결 오류가 발생했습니다.");
+    }
   }, []);
 
   useEffect(() => { void authHeaders().then((headers) => fetch(`/api/documents${matchId ? `?matchId=${encodeURIComponent(matchId)}` : ""}`, { cache: "no-store", headers })).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.error); return data; }).then((data) => { setDocuments(data.documents || []); if (data.documents?.[0]) void openDocument(data.documents[0]); }).catch((reason) => setError(reason instanceof Error ? reason.message : "문서 목록을 불러오지 못했습니다.")).finally(() => setLoading(false)); }, [openDocument, matchId]);

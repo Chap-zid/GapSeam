@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "pretendard/dist/web/static/Pretendard-Regular.css";
+@import "pretendard/dist/web/static/Pretendard-Bold.css";
 
 /* Warm architectural shapes: decorative, non-interactive, and behind content. */
 .hero { position:relative; isolation:isolate; }
@@ -80,11 +82,10 @@
 @media(max-width:620px) { .auth-layout{grid-template-columns:1fr;gap:25px;padding-top:0}.auth-intro h1{font-size:30px}.connection-art,.auth-benefits{display:none}.auth-intro>p:not(.eyebrow){font-size:14px}.profile-banner{padding:22px;gap:15px;flex-wrap:wrap}.profile-banner>.button{margin-left:0;width:100%}.profile-avatar{width:58px;height:58px;font-size:25px}.profile-banner h2{font-size:22px}.account-stats{gap:8px}.account-stats>a{padding:14px 10px}.account-stats>a>svg{display:none}.account-stats span{font-size:11px}.account-stats b{font-size:25px}.account-settings{grid-template-columns:1fr}.account-role{padding:17px;gap:12px}.account-role small{font-size:12px}.site-footer>.shell{flex-wrap:wrap;gap:12px}.site-footer small{display:none}.account-link{font-size:13px}.hero-image:after{right:15px;top:-25px;width:48px;height:48px;border-width:9px} }
 @media(prefers-reduced-motion:reduce) { .session-loader{animation:none} }
 
-@font-face { font-family: Pretendard; font-style: normal; font-weight: 100 900; font-display: swap; src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2"); }
 :root { --orange:#f99d26; --orange-dark:#e98a12; --cream:#fff6e9; --ink:#222; --muted:#737373; --line:#e8e8e5; --soft:#f7f7f5; --green:#247a52; --green-bg:#edf8f2; }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { margin:0; background:#fff; color:var(--ink); font-family:Pretendard, Arial, sans-serif; letter-spacing:-.02em; }
+body { margin:0; background:#fff; color:var(--ink); font-family:Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; letter-spacing:-.02em; }
 button,input,select,textarea { font:inherit; }
 button,a { -webkit-tap-highlight-color:transparent; }
 a { color:inherit; text-decoration:none; }
@@ -613,3 +614,109 @@ a { color:inherit; text-decoration:none; }
 .broker-papers ul { margin:0; padding-left:17px; }
 .broker-papers li { font-size:12px; color:#626262; line-height:1.6; margin:4px 0; }
 .broker-note { margin:0; padding-top:12px; border-top:1px solid var(--line); font-size:11px; color:#a0a0a0; line-height:1.6; }
+
+/* ── 태블릿·모바일 사용성 ─────────────────────────────── */
+@media (max-width:1024px) {
+  .shell { width:min(100% - 40px,1200px); }
+  .document-page .shell { width:min(100% - 40px,1680px); }
+  .hero { overflow-x:clip; }
+  .analysis-float { left:16px; }
+  .hero { gap:38px; }
+  .hero h1 { font-size:48px; }
+  .auth-layout { grid-template-columns:minmax(0,1fr) minmax(300px,420px); gap:34px; }
+  .form-layout { grid-template-columns:minmax(0,1fr) minmax(280px,340px); gap:20px; }
+  .form-card { padding:26px; }
+  .agent-layout { grid-template-columns:minmax(250px,320px) minmax(0,1fr); gap:20px; }
+  .match-room-layout { grid-template-columns:minmax(0,1fr) 300px; gap:16px; }
+  .chat-log { height:clamp(380px,55vh,500px); }
+  .document-workspace { grid-template-columns:220px minmax(0,1fr); }
+  .document-agent { grid-column:1 / -1; max-height:none; }
+  .document-quick { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .shared-doc-layout { grid-template-columns:minmax(0,1fr) 310px; }
+  .space-detail-hero { gap:26px; }
+  .space-detail-grid { grid-template-columns:minmax(0,1fr) 320px; gap:16px; }
+}
+
+@media (max-width:800px) {
+  .auth-layout { grid-template-columns:minmax(0,1fr) minmax(280px,380px); gap:22px; }
+  .auth-intro h1 { font-size:34px; }
+  .form-layout,.agent-layout,.dashboard-grid,.match-room-layout,.space-detail-hero,.space-detail-grid,.shared-doc-layout { grid-template-columns:minmax(0,1fr); }
+  .form-aside,.side-card,.timeline-card,.application-card,.shared-doc-agent { position:static; }
+  .match-room-side { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .document-workspace { grid-template-columns:minmax(0,1fr); min-height:0; }
+  .document-list { max-height:220px; overflow-y:auto; }
+  .document-agent { grid-column:auto; }
+  .document-quick { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .space-detail-photo { height:clamp(280px,55vw,420px); }
+  .shared-doc-agent { max-height:none; }
+  .request-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width:600px) {
+  .shell,.document-page .shell { width:calc(100% - 28px); }
+  .nav { gap:10px; }
+  .brand { font-size:18px; }
+  .mobile-menu { width:44px; height:44px; display:grid; place-items:center; }
+  .nav-links.open { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 10px; padding:10px 14px 14px; }
+  .nav-links.open a { min-height:44px; display:flex; align-items:center; padding:8px; font-size:14px; }
+  .nav-actions { gap:4px; }
+  .account-link { padding:8px 5px; font-size:12px; }
+  .hero { gap:26px; padding-top:30px; padding-bottom:48px; }
+  .hero h1 { font-size:clamp(31px,8vw,38px); }
+  .hero-image>img { height:clamp(235px,72vw,340px); }
+  .analysis-float { left:8px; bottom:10px; width:min(220px,78%); padding:14px; }
+  .page,.agent-page { padding-top:28px; padding-bottom:56px; }
+  .page-head { margin-bottom:24px; }
+  .page-head h1,.market-head h1,.dashboard-head h1 { font-size:28px; }
+  .form-card,.login-panel { padding:18px; }
+  .form-section { padding-bottom:24px; margin-bottom:22px; }
+  .form-grid,.request-summary,.meta-grid,.match-room-side,.match-data,.analysis-facts,.cost-grid,.compare,.steps,.role-grid { grid-template-columns:minmax(0,1fr); }
+  .field.full { grid-column:auto; }
+  .dropzone { min-height:145px; padding:18px 12px; }
+  .dashboard-head,.market-head,.match-room-head,.shared-doc-head,.admin-review-head { align-items:stretch; flex-direction:column; gap:14px; }
+  .dashboard-head>.button,.market-head>.button,.match-room-head>.button { width:100%; }
+  .dashboard-actions { display:grid; grid-template-columns:1fr; }
+  .dashboard-actions .button { min-height:46px; }
+  .proposal-body,.result-body,.card-pad { padding:18px; }
+  .proposal-top,.match-card-head { align-items:flex-start; }
+  .proposal-actions { flex-direction:column; }
+  .proposal-actions .button { width:100%; }
+  .chat-title { padding:0 12px; }
+  .chat-title small { max-width:190px; line-height:1.4; }
+  .chat-log { height:clamp(330px,55svh,480px); padding:12px; }
+  .chat-message { max-width:94%; }
+  .chat-compose { position:sticky; bottom:0; grid-template-columns:minmax(0,1fr) 44px; gap:7px; padding:10px; background:#fff; }
+  .chat-compose textarea { min-width:0; min-height:48px; padding:11px; font-size:16px; }
+  .chat-compose .button { width:44px; min-height:48px; padding:0; }
+  .document-page { padding-top:24px; padding-bottom:50px; }
+  .document-head { gap:16px; }
+  .document-head h1,.shared-doc-head h1 { font-size:26px; }
+  .document-upload { width:100%; min-height:46px; }
+  .document-toolbar { padding:0 10px; gap:8px; }
+  .document-toolbar b { max-width:min(48vw,220px); }
+  .document-editor { height:clamp(400px,62svh,620px); }
+  .document-quick button { min-height:58px; padding:9px; }
+  .document-agent,.broker-card,.mediator-guide { padding:16px; }
+  .space-detail-photo { height:clamp(230px,70vw,340px); }
+  .space-detail-summary h1 { font-size:26px; overflow-wrap:anywhere; }
+  .shared-doc-nav { align-items:stretch; flex-direction:column; gap:12px; }
+  .shared-doc-nav>div { justify-content:space-between; flex-wrap:wrap; }
+  .shared-doc-toolbar,.shared-doc-foot { padding:11px 12px; }
+  .shared-doc-title { width:calc(100% - 28px); margin:14px 14px 0; font-size:19px; }
+  .shared-doc-content { min-height:55svh; padding:15px; font-size:16px; }
+  .shared-doc-foot>span { display:none; }
+  .admin-review-summary>div { padding:11px 8px; }
+  .admin-review-summary span { font-size:10px; }
+  .admin-review-summary b { font-size:19px; }
+  .admin-review-filters button { min-height:42px; }
+  .admin-review-item { padding:13px; }
+  .admin-proof iframe { height:55svh; }
+  .admin-review-decision>div { grid-template-columns:1fr; }
+  .modal { padding:22px; }
+  .modal-actions { grid-template-columns:1fr; }
+}
+
+@media (pointer:coarse) {
+  .button.small,.document-list-title label,.admin-proof-title button,.admin-review-filters button { min-height:44px; }
+  .document-quick button { min-height:68px; }
+}
