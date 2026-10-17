@@ -46,9 +46,13 @@ env:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_ONLYOFFICE_URL
-    value: https://dare-advertising-wearing-awesome.trycloudflare.com
+    value: https://onlyoffice-a42wuvfbaa-uk.a.run.app
     availability:
       - BUILD
+      - RUNTIME
+  - variable: ONLYOFFICE_JWT_SECRET
+    secret: ONLYOFFICE_JWT_SECRET@2
+    availability:
       - RUNTIME
   - variable: DOCUMENT_SERVER_CALLBACK_ORIGIN
     value: https://my-web-app--gap-seam.us-east4.hosted.app

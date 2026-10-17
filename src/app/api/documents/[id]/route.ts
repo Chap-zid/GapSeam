@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { documentVersion, getDocument } from "@/lib/document-store";
 import { canAccessMatch, getFirebaseSession } from "@/lib/server-auth";
+import { signOnlyOfficeConfig } from "@/lib/onlyoffice";
 
 export const runtime = "nodejs";
 
@@ -23,10 +24,10 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/docu
   const serverOrigin = documentServerOrigin(request);
   return NextResponse.json({
     document,
-    editor: {
+    editor: signOnlyOfficeConfig({
       document: { fileType: "docx", key: `${id}-${await documentVersion(id)}`, title: document.name, url: `${serverOrigin}/api/documents/${id}/file` },
       documentType: "word",
       editorConfig: { callbackUrl: `${serverOrigin}/api/documents/${id}/callback`, lang: "ko", mode: "edit", user: { id: session.uid, name: session.name }, customization: { autosave: true, forcesave: true } },
-    },
+    }),
   });
 }
