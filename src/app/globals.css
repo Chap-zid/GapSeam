@@ -74,7 +74,7 @@
 .current-role { display:flex; align-items:center; gap:4px; font-size:12px; color:#ac6810; white-space:nowrap; }
 .logout-row { display:flex; justify-content:space-between; align-items:center; padding:28px 0; gap:20px; }
 .logout-row p { color:#737373; font-size:13px; margin:7px 0 0; }
-.site-footer { border-top:1px solid #e8e8e5; padding:30px 0; background:#fff; }
+.site-footer { position:relative; z-index:2; border-top:1px solid #e8e8e5; padding:30px 0; background:#fff; }
 .site-footer>.shell { display:flex; gap:24px; align-items:center; }
 .site-footer span,.site-footer small { color:#8a8a85; font-size:12px; }
 .site-footer small { margin-left:auto; }
