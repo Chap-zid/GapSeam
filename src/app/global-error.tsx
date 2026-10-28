@@ -5,7 +5,7 @@ import { useEffect } from "react";
 // 레이아웃 자체가 실패한 경우를 위한 마지막 방어선입니다. 자체 html/body를 렌더링합니다.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => { console.error("Global error", error.message, error.digest); }, [error]);
-  return <html lang="ko"><body style={{ margin: 0, fontFamily: "Pretendard, Arial, sans-serif", background: "#fff", color: "#222" }}>
+  return <html lang="ko"><body style={{ margin: 0, fontFamily: "'Malgun Gothic', Arial, sans-serif", background: "#fff", color: "#222" }}>
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
       <div style={{ maxWidth: 460 }}>
         <div style={{ width: 45, height: 45, borderRadius: 12, background: "#fff6e9", color: "#a65e00", display: "grid", placeItems: "center", fontWeight: 850, fontSize: 12, margin: "0 auto 18px" }}>이음</div>

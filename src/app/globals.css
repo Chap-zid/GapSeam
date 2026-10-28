@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "pretendard/dist/web/static/Pretendard-Regular.css";
-@import "pretendard/dist/web/static/Pretendard-Bold.css";
 
 /* Warm architectural shapes: decorative, non-interactive, and behind content. */
 .hero { position:relative; isolation:isolate; }
@@ -85,7 +83,7 @@
 :root { --orange:#f99d26; --orange-dark:#e98a12; --cream:#fff6e9; --ink:#222; --muted:#737373; --line:#e8e8e5; --soft:#f7f7f5; --green:#247a52; --green-bg:#edf8f2; }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { margin:0; background:#fff; color:var(--ink); font-family:Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; letter-spacing:-.02em; }
+body { margin:0; background:#fff; color:var(--ink); font-family:var(--font-paperlogy), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; letter-spacing:-.02em; }
 button,input,select,textarea { font:inherit; }
 button,a { -webkit-tap-highlight-color:transparent; }
 a { color:inherit; text-decoration:none; }
@@ -480,8 +478,8 @@ a { color:inherit; text-decoration:none; }
 .shared-doc-toolbar { border-bottom:1px solid var(--line); }
 .shared-doc-toolbar>div,.shared-doc-foot>span { display:flex; align-items:center; gap:7px; }
 .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px var(--green-bg); }
-.shared-doc-title { width:calc(100% - 36px); margin:18px 18px 0; padding:0 0 13px; border:0; border-bottom:1px solid var(--line); outline:0; color:var(--ink); font:800 22px/1.35 Pretendard, sans-serif; }
-.shared-doc-content { width:100%; min-height:610px; box-sizing:border-box; padding:22px 25px; resize:vertical; border:0; outline:0; color:#353532; font:14px/1.9 Pretendard, sans-serif; }
+.shared-doc-title { width:calc(100% - 36px); margin:18px 18px 0; padding:0 0 13px; border:0; border-bottom:1px solid var(--line); outline:0; color:var(--ink); font:800 22px/1.35 var(--font-paperlogy), sans-serif; }
+.shared-doc-content { width:100%; min-height:610px; box-sizing:border-box; padding:22px 25px; resize:vertical; border:0; outline:0; color:#353532; font:14px/1.9 var(--font-paperlogy), sans-serif; }
 .shared-doc-foot { border-top:1px solid var(--line); }
 .shared-doc-agent { position:sticky; top:92px; max-height:790px; overflow-y:auto; padding:20px; }
 .shared-doc-agent label { display:block; margin-top:17px; font-size:12px; font-weight:750; }
