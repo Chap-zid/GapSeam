@@ -595,15 +595,6 @@ a { color:inherit; text-decoration:none; }
 .broker-head .engine-badge { margin-left:auto; }
 .broker-avatar { width:33px; height:33px; flex:0 0 auto; border-radius:10px; display:grid; place-items:center; background:var(--cream); color:#bd6d08; animation:soft-pulse 2.6s ease-in-out infinite; }
 .broker-progress small { display:block; margin-top:7px; font-size:11px; color:var(--muted); }
-.broker-agenda { list-style:none; margin:0; padding:0; display:grid; gap:9px; }
-.broker-agenda li { display:flex; gap:10px; align-items:flex-start; animation:rise .4s ease both; }
-.broker-agenda li:nth-child(2){animation-delay:.04s}.broker-agenda li:nth-child(3){animation-delay:.08s}.broker-agenda li:nth-child(4){animation-delay:.12s}.broker-agenda li:nth-child(5){animation-delay:.16s}.broker-agenda li:nth-child(6){animation-delay:.2s}
-.broker-agenda b { display:block; font-size:13px; }
-.broker-agenda small { display:block; font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:2px; }
-.broker-dot { width:9px; height:9px; flex:0 0 auto; border-radius:50%; margin-top:5px; background:#d9d9d4; }
-.broker-agenda li.agreed .broker-dot { background:var(--green); }
-.broker-agenda li.discussing .broker-dot { background:var(--orange); }
-.broker-agenda li.agreed b { color:var(--green); }
 .broker-next { padding:13px 15px; border-radius:11px; background:var(--cream); }
 .broker-next b { display:flex; align-items:center; gap:6px; font-size:12.5px; color:#96650d; }
 .broker-next ol { margin:8px 0 0; padding-left:18px; }
@@ -718,3 +709,63 @@ a { color:inherit; text-decoration:none; }
   .button.small,.document-list-title label,.admin-proof-title button,.admin-review-filters button { min-height:44px; }
   .document-quick button { min-height:68px; }
 }
+
+/* 저장된 분석 결과 다시 분석 */
+.discovery-head { flex-wrap:wrap; }
+.rerun-button { margin-left:auto; padding:6px 10px; border:1px solid var(--line); border-radius:9px; background:white; color:#a65e00; font-size:13px; cursor:pointer; }
+.rerun-button:hover { border-color:var(--orange); background:var(--cream); }
+
+/* 공간 사진 삭제 */
+.thumb { position:relative; flex:0 0 auto; }
+.thumb button { position:absolute; top:4px; right:4px; width:22px; height:22px; border:0; border-radius:50%; background:rgba(20,20,20,.62); color:white; display:grid; place-items:center; cursor:pointer; }
+.thumb button:hover { background:rgba(20,20,20,.85); }
+
+/* 소유자 확인: 신분증과 소유 증빙 서류 */
+.proof-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+.proof-box { display:flex; flex-direction:column; }
+.proof-grid .proof-upload { margin-top:0; flex:1; }
+.proof-upload.is-dragging { border-color:var(--orange); background:var(--cream); }
+.proof-files { list-style:none; margin:8px 0 0; padding:0; display:grid; gap:6px; }
+.proof-files li { display:flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; font-size:12px; background:white; }
+.proof-files li span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.proof-files button { border:0; background:none; color:var(--muted); display:grid; place-items:center; cursor:pointer; padding:2px; }
+.proof-files button:hover { color:#b3261e; }
+.proof-steps { margin:12px 0 0; padding:12px 14px 12px 32px; border-radius:10px; background:#fafaf8; font-size:12px; color:var(--muted); line-height:1.8; }
+@media (max-width:640px) { .proof-grid { grid-template-columns:1fr; } }
+
+/* 소유자 확인 재제출과 운영자 대조 체크리스트 */
+.verification-card { margin-bottom:18px; }
+.admin-proof-columns { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.admin-proof-columns h3 { margin:0 0 8px; font-size:12px; color:var(--muted); }
+.admin-proof-missing { margin:0; padding:12px; border:1px dashed #e0b56f; border-radius:9px; background:#fff8ec; color:#8a5300; font-size:12px; line-height:1.6; }
+.admin-check-list { display:grid; gap:8px; margin:15px 0 0; padding:13px 14px; border:1px solid var(--line); border-radius:10px; }
+.admin-check-list legend { padding:0 5px; font-size:12px; font-weight:750; }
+.admin-check-list label { display:flex; align-items:flex-start; gap:9px; font-size:12px; line-height:1.55; cursor:pointer; }
+.admin-check-list input { margin-top:2px; accent-color:var(--orange); }
+.admin-check-list input:disabled + span { color:#aaa; }
+@media (max-width:760px) { .admin-proof-columns { grid-template-columns:1fr; } }
+
+/* 중개 에이전트: 협의 로드맵과 추천 방향 */
+.broker-roadmap { list-style:none; margin:0; padding:0; display:grid; gap:0; }
+.broker-roadmap li { position:relative; display:flex; gap:10px; align-items:flex-start; padding-bottom:10px; }
+.broker-roadmap li:not(:last-child)::before { content:""; position:absolute; left:10px; top:22px; bottom:0; width:1.5px; background:#e5e3dd; }
+.broker-roadmap li.done:not(:last-child)::before { background:var(--green); }
+.roadmap-dot { width:21px; height:21px; flex:0 0 auto; border-radius:50%; display:grid; place-items:center; font-size:10.5px; font-weight:750; background:#f1f0ec; color:#9a9a94; }
+.broker-roadmap li.done .roadmap-dot { background:var(--green); color:white; }
+.broker-roadmap li.current .roadmap-dot { background:var(--orange); color:#24180a; box-shadow:0 0 0 4px rgba(249,157,38,.18); }
+.broker-roadmap b { display:block; font-size:13px; line-height:21px; color:#9a9a94; font-weight:650; }
+.broker-roadmap li.done b { color:var(--green); }
+.broker-roadmap li.current b { color:var(--ink); font-weight:750; }
+.broker-roadmap small { display:block; font-size:11.5px; color:var(--muted); line-height:1.5; }
+.broker-directions { display:grid; gap:8px; padding:13px 14px; border:1px solid #f1dfc2; border-radius:11px; background:#fffaf2; }
+.broker-directions > b { display:flex; align-items:center; gap:6px; font-size:12.5px; color:#96650d; }
+.broker-directions > small { font-size:10.5px; color:var(--muted); }
+.broker-direction { padding:9px 11px; border-radius:9px; background:white; border:1px solid #f0e8da; animation:rise .4s ease both; }
+.broker-direction span { display:block; font-size:11px; font-weight:750; color:#a65e00; }
+.broker-direction.discussing span { color:#b05a00; }
+.broker-direction p, .broker-direction-done { margin:4px 0 0; font-size:12px; line-height:1.6; color:#5b4a33; }
+.broker-chips { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px; }
+.broker-chips li { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; font-size:11.5px; font-weight:650; background:#f3f2ee; color:#77776f; }
+.broker-chips li span { font-weight:500; font-size:10.5px; opacity:.85; }
+.broker-chips li.discussing { background:#fff1dc; color:#a65e00; }
+.broker-chips li.agreed { background:#e7f5ec; color:var(--green); }

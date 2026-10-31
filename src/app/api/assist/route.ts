@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BUILDING_TYPES, FACILITY_OPTIONS, PERIODS, SPACE_STATUSES, extractFields, fallbackReply, missingFields, type AssistFields, type AssistKind, type AssistTurn } from "@/lib/assist";
+import { hasValidFirebaseSession } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -70,21 +71,6 @@ function instructions(kind: AssistKind) {
         "예산은 월 기준 만 원 단위 숫자로만 주세요.",
       ];
   return [...shared, ...detail].join("\n");
-}
-
-async function hasValidFirebaseSession(request: NextRequest) {
-  const token = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!token || !apiKey) return false;
-  try {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: token }),
-      signal: AbortSignal.timeout(8_000),
-    });
-    return response.ok;
-  } catch { return false; }
 }
 
 function outputText(response: Record<string, unknown>) {

@@ -38,24 +38,37 @@ export async function saveSpace(input: Omit<Space, "id" | "createdAt" | "imageUr
   return id;
 }
 
-export async function submitOwnerVerification(spaceId: string, ownerId: string, legalName: string, files: File[]) {
+export const PROOF_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+export const MAX_ID_FILES = 2;
+export const MAX_PROOF_FILES = 3;
+
+// 신분증의 이름과 소유 서류의 소유자 이름을 운영자가 대조하므로 세 항목을 모두 받아야 제출할 수 있습니다.
+export function ownerVerificationInputError(legalName: string, idFiles: File[], proofFiles: File[]) {
+  if (!legalName.trim() || !idFiles.length || !proofFiles.length) return "소유자 확인을 신청하려면 이름, 신분증, 소유 증빙 서류를 모두 첨부해주세요.";
+  if (idFiles.length > MAX_ID_FILES || proofFiles.length > MAX_PROOF_FILES) return `신분증은 ${MAX_ID_FILES}개, 소유 증빙 서류는 ${MAX_PROOF_FILES}개까지 첨부할 수 있습니다.`;
+  if ([...idFiles, ...proofFiles].some((file) => !PROOF_FILE_TYPES.includes(file.type) || file.size > 15 * 1024 * 1024)) return "PDF 또는 JPG, PNG, WebP 파일을 장당 15MB 이하로 제출해주세요.";
+  return "";
+}
+
+export async function submitOwnerVerification(spaceId: string, ownerId: string, legalName: string, idFiles: File[], proofFiles: File[]) {
   if (!isFirebaseReady || !db || !storage) throw new Error("Firebase Storage 설정이 필요합니다.");
-  if (!legalName.trim() || files.length === 0 || files.length > 3) throw new Error("이름과 확인 서류를 입력해주세요.");
-  const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-  if (files.some((file) => !allowedTypes.includes(file.type) || file.size > 15 * 1024 * 1024)) throw new Error("PDF 또는 JPG, PNG, WebP 파일을 장당 15MB 이하로 제출해주세요.");
+  const inputError = ownerVerificationInputError(legalName, idFiles, proofFiles);
+  if (inputError) throw new Error(inputError);
   const previous = await getDoc(doc(db, "ownerVerifications", spaceId));
   if (previous.exists() && previous.data().status !== "rejected") throw new Error("이미 제출한 서류가 검토 중이거나 인증 완료 상태입니다.");
-  const proofPaths = await Promise.all(files.map(async (file, index) => {
+  const upload = (files: File[], kind: "id" | "doc") => Promise.all(files.map(async (file, index) => {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `ownership-proofs/${ownerId}/${spaceId}/${Date.now()}-${index}-${safeName}`;
+    const path = `ownership-proofs/${ownerId}/${spaceId}/${Date.now()}-${kind}${index}-${safeName}`;
     await uploadBytes(ref(storage!, path), file, { contentType: file.type });
     return path;
   }));
+  const [idPaths, proofPaths] = await Promise.all([upload(idFiles, "id"), upload(proofFiles, "doc")]);
   const verificationRef = doc(db, "ownerVerifications", spaceId);
   const submission = {
     spaceId,
     ownerId,
     legalName: legalName.trim().slice(0, 100),
+    idPaths,
     proofPaths,
     status: "pending",
     reviewNote: "",
@@ -70,7 +83,7 @@ export async function getOwnerVerification(spaceId: string, ownerId: string) {
   const snapshot = await getDoc(doc(db, "ownerVerifications", spaceId));
   if (!snapshot.exists() || snapshot.data().ownerId !== ownerId) return null;
   const data = snapshot.data();
-  return { status: data.status as "pending" | "verified" | "rejected", reviewNote: typeof data.reviewNote === "string" ? data.reviewNote : "" };
+  return { status: data.status as "pending" | "verified" | "rejected", reviewNote: typeof data.reviewNote === "string" ? data.reviewNote : "", hasId: Array.isArray(data.idPaths) && data.idPaths.length > 0 };
 }
 
 export type OwnerVerificationReview = {
@@ -78,11 +91,17 @@ export type OwnerVerificationReview = {
   spaceId: string;
   ownerId: string;
   legalName: string;
+  // 이전 제출에는 신분증이 없을 수 있습니다. 그 경우 운영자가 보완 요청으로 신분증을 받습니다.
+  idPaths?: string[];
   proofPaths: string[];
   status: "pending" | "verified" | "rejected";
   reviewNote: string;
+  checks?: OwnerVerificationChecks;
   submittedAt: unknown;
 };
+
+// 운영자가 확인 완료 전에 모두 체크해야 하는 대조 항목입니다. Firestore 규칙에서도 같은 조건을 검사합니다.
+export type OwnerVerificationChecks = { idName: boolean; docName: boolean; address: boolean };
 
 export function watchOwnerVerificationQueue(callback: (items: OwnerVerificationReview[]) => void, onError: (error: Error) => void) {
   if (!db) { onError(new Error("Firebase 연결 설정을 확인해주세요.")); return () => {}; }
@@ -97,10 +116,12 @@ export async function loadOwnerProof(spaceId: string, ownerId: string, path: str
   return URL.createObjectURL(blob);
 }
 
-export async function reviewOwnerVerification(spaceId: string, reviewerId: string, status: "verified" | "rejected", reviewNote: string) {
+export async function reviewOwnerVerification(spaceId: string, reviewerId: string, status: "verified" | "rejected", reviewNote: string, checks: OwnerVerificationChecks) {
   if (!db) throw new Error("Firebase 연결 설정을 확인해주세요.");
+  if (status === "verified" && !(checks.idName && checks.docName && checks.address)) throw new Error("이름·소재지 대조 항목을 모두 확인해야 확인 완료할 수 있습니다.");
   await updateDoc(doc(db, "ownerVerifications", spaceId), {
     status,
+    checks,
     reviewNote: reviewNote.trim().slice(0, 1000),
     reviewedBy: reviewerId,
     reviewedAt: serverTimestamp(),
