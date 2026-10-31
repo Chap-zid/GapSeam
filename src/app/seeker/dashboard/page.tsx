@@ -15,7 +15,8 @@ export default function SeekerDashboard() {
   const [matches, setMatches] = useState<SpaceMatch[]>([]);
   const [spaces, setSpaces] = useState<Record<string, Space>>({});
   const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
+  // 어느 연결에서 실패했는지 함께 기억해야 처리 중 상태가 풀린 뒤에도 오류 문구가 해당 카드에 남습니다.
+  const [error, setError] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "seeker") return;
@@ -27,9 +28,9 @@ export default function SeekerDashboard() {
 
   async function respond(id: string, status: "accepted" | "rejected") {
     if (busy) return;
-    setBusy(id); setError("");
+    setBusy(id); setError(null);
     try { await respondToMatch(id, status); }
-    catch { setError("제안 응답을 저장하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요."); }
+    catch { setError({ id, message: "제안 응답을 저장하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요." }); }
     finally { setBusy(""); }
   }
 
@@ -44,7 +45,7 @@ export default function SeekerDashboard() {
         {active.length === 0 ? <div className="empty"><div className="empty-icon"><Inbox/></div><b>아직 연결 요청이 없습니다.</b><p>공간을 직접 둘러보고 신청하거나 소유자의 제안을 기다려보세요.</p><Link className="button small" href="/spaces">공개 공간 보기</Link></div> : active.map((match) => { const space = spaces[match.spaceId]; const incoming = match.status === "proposed" && match.initiator !== "seeker"; return <div className="dashboard-match" key={match.id}>
           {incoming && <div className="notice"><Bell/><div><b>새로운 공간 제안이 도착했습니다.</b><p>등록하신 조건과 높은 적합도를 가진 공간입니다.</p></div></div>}
           <article className="proposal"><Image className="proposal-image" width={900} height={500} src={space?.imageUrls?.[0] || "/images/space-hero.png"} alt="연결 공간"/><div className="proposal-body"><div className="proposal-top"><div><h3>{space?.address || "공간 정보를 불러오는 중"}</h3><span className="proposal-meta">{space?.buildingType || "공간"} · {space?.area || "-"}㎡</span></div><StatusBadge status={match.status}/></div><div className="meta-grid"><div className="meta-box"><span>예상 이용료</span><b>{match.approvedPrice || space?.analysis?.estimatedPrice || "협의"}</b></div><div className="meta-box"><span>추천 용도</span><b>{space?.analysis?.suggestedUses?.[0]?.name || "분석 중"}</b></div><div className="meta-box"><span>공간 적합도</span><b><CountUp value={match.score}/>%</b></div></div><div className="match-reason"><strong><CountUp value={match.score}/>% 적합</strong><span className="reason-lines">{match.reason}</span></div>
-          {error && busy === match.id && <p className="login-error" role="alert">{error}</p>}
+          {error?.id === match.id && <p className="login-error" role="alert">{error.message}</p>}
           {incoming ? <div className="proposal-actions"><button disabled={!!busy} className="button secondary" onClick={() => void respond(match.id, "rejected")}>거절</button><button disabled={!!busy} className="button" onClick={() => void respond(match.id, "accepted")}><CheckCircle2 size={18}/> 제안 수락</button></div> : match.status === "accepted" ? <><MatchStatus status={match.status}/><Link className="button full-button" href={`/matches/${match.id}`}><MessageCircle size={17}/> 채팅과 공동 문서</Link></> : <MatchStatus status={match.status}/>}</div></article>
         </div>; })}
       </div></section>

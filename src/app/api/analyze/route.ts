@@ -3,6 +3,7 @@ import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import type { LocationEvidence, Space } from "@/lib/types";
 import { assessConfidence, guardAnalysis, withRetry } from "@/lib/safety";
+import { hasValidFirebaseSession } from "@/lib/server-auth";
 import { getLocationContext, type LocationContext } from "@/lib/vworld";
 
 export const runtime = "nodejs";
@@ -124,21 +125,6 @@ async function enrichFallbackLocation(space: Space, location: LocationContext): 
     console.error("OpenAI location fallback failed", error instanceof Error ? error.message : "Unknown error");
     return unresolved;
   }
-}
-
-async function hasValidFirebaseSession(request: NextRequest) {
-  const token = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!token || !apiKey) return false;
-  try {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: token }),
-      signal: AbortSignal.timeout(8_000),
-    });
-    return response.ok;
-  } catch { return false; }
 }
 
 function clientLocation(value: unknown): LocationContext | null {

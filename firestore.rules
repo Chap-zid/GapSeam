@@ -25,6 +25,9 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/spaces/$(spaceId)).data.ownerId == request.auth.uid
         && request.resource.data.legalName is string
         && request.resource.data.legalName.size() > 0
+        && request.resource.data.idPaths is list
+        && request.resource.data.idPaths.size() > 0
+        && request.resource.data.idPaths.size() <= 2
         && request.resource.data.proofPaths is list
         && request.resource.data.proofPaths.size() > 0
         && request.resource.data.status == 'pending';
@@ -35,9 +38,14 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.spaceId == spaceId
         && request.resource.data.legalName is string
+        && request.resource.data.idPaths is list
+        && request.resource.data.idPaths.size() > 0
+        && request.resource.data.idPaths.size() <= 2
         && request.resource.data.proofPaths is list
         && request.resource.data.proofPaths.size() > 0
-        && changed().hasOnly(['legalName', 'proofPaths', 'status', 'reviewNote', 'submittedAt']);
+        && changed().hasOnly(['legalName', 'idPaths', 'proofPaths', 'status', 'reviewNote', 'submittedAt']);
+      // 확인 완료는 신분증 이름·소유 서류 이름·소재지 대조를 모두 체크한 경우에만 허용합니다.
+      // 신분증이 없는 이전 제출은 보완 요청으로만 처리할 수 있습니다.
       allow update: if isAdmin()
         && resource.data.status in ['pending', 'rejected']
         && request.resource.data.status in ['verified', 'rejected']
@@ -45,7 +53,12 @@ service cloud.firestore {
         && request.resource.data.reviewedAt == request.time
         && request.resource.data.reviewNote is string
         && request.resource.data.reviewNote.size() <= 1000
-        && changed().hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedAt']);
+        && (request.resource.data.status == 'rejected'
+          || (request.resource.data.checks.idName == true
+            && request.resource.data.checks.docName == true
+            && request.resource.data.checks.address == true
+            && request.resource.data.idPaths.size() > 0))
+        && changed().hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedAt', 'checks']);
       allow delete: if false;
     }
 

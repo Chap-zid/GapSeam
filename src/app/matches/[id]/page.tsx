@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Building2, ClipboardCheck, FileText, Handshake, MessageCircle, Send, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, Building2, Check, ClipboardCheck, Compass, FileText, Handshake, MessageCircle, Send, ShieldCheck, Users } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "@/components/session-provider";
 import { StatusBadge } from "@/components/ui";
 import { auth } from "@/lib/firebase";
-import { BROKER_NAME, agendaProgress, paperChecklist, trackAgenda } from "@/lib/broker";
-import { getRequest, getSpace, sendBrokerMessage, sendChatMessage, watchChat, watchMatch } from "@/lib/services";
+import { BROKER_NAME, agendaProgress, buildRoadmap, paperChecklist, recommendDirections, trackAgenda } from "@/lib/broker";
+import { getRequest, getSpace, sendBrokerMessage, sendChatMessage, watchChat, watchMatch, watchMatchDocument } from "@/lib/services";
 import type { ChatMessage, Space, SpaceMatch, SpaceRequest } from "@/lib/types";
 
 function timeLabel(value: unknown) {
@@ -34,6 +34,7 @@ export default function MatchChatPage() {
   const [brokerError, setBrokerError] = useState("");
   const [brokerSource, setBrokerSource] = useState<"openai" | "fallback" | null>(null);
   const [nextSteps, setNextSteps] = useState<string[]>([]);
+  const [hasDocument, setHasDocument] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLFormElement>(null);
 
@@ -44,12 +45,16 @@ export default function MatchChatPage() {
     if (match.status !== "accepted") return;
     return watchChat(id, setMessages);
   }, [id, match]);
+  // 공동 문서가 저장됐는지에 따라 로드맵의 '공동 문서 정리' 단계를 표시합니다.
+  useEffect(() => { if (match?.status !== "accepted") return; return watchMatchDocument(id, (item) => setHasDocument(Boolean(item))); }, [id, match?.status]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   // 협의 진행 상황은 모델을 부르지 않고 대화 내용에서 규칙으로 계산해 바로 반영합니다.
   const agenda = useMemo(() => trackAgenda(messages), [messages]);
   const progress = agendaProgress(agenda);
   const checklist = useMemo(() => paperChecklist(space, request), [space, request]);
+  const roadmap = useMemo(() => buildRoadmap(agenda, hasDocument), [agenda, hasDocument]);
+  const directions = useMemo(() => recommendDirections(agenda, match, space, request), [agenda, match, space, request]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,7 +73,7 @@ export default function MatchChatPage() {
       const response = await fetch("/api/broker", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ matchId: id, match, space, request, messages }),
+        body: JSON.stringify({ matchId: id, match, space, request, messages, hasDocument }),
       });
       if (!response.ok) throw new Error("중개 에이전트를 부르지 못했습니다. 잠시 후 다시 시도해주세요.");
       const data = await response.json() as { briefing?: { reply?: string; nextSteps?: string[] }; source?: "openai" | "fallback" };
@@ -96,7 +101,9 @@ export default function MatchChatPage() {
         <section className="broker-card">
           <div className="broker-head"><span className="broker-avatar"><Handshake size={16}/></span><div><b>{BROKER_NAME}</b><small>양측 사이에서 협의 진행을 돕습니다.</small></div>{brokerSource && <span className={`engine-badge ${brokerSource}`}>{brokerSource === "openai" ? "실시간 모델" : "안정 모드"}</span>}</div>
           <div className="broker-progress"><div className="assist-progress-bar"><span style={{ width: `${progress}%` }}/></div><small>협의 진행률 {progress}% · 6개 항목 중 {agenda.filter((item) => item.status === "agreed").length}개 정리됨</small></div>
-          <ul className="broker-agenda">{agenda.map((item) => <li key={item.key} className={item.status}><span className="broker-dot"/><div><b>{item.label}</b><small>{STATUS_LABEL[item.status]} · {item.note}</small></div></li>)}</ul>
+          <ol className="broker-roadmap" aria-label="협의 단계">{roadmap.map((stage, index) => <li key={stage.key} className={stage.status}><span className="roadmap-dot">{stage.status === "done" ? <Check size={11}/> : index + 1}</span><div><b>{stage.label}</b>{stage.status === "current" && <small>{stage.detail}</small>}</div></li>)}</ol>
+          <div className="broker-directions"><b><Compass size={14}/> 이렇게 정해보세요</b>{directions.length ? directions.slice(0, 3).map((direction) => <div className={`broker-direction ${direction.status}`} key={direction.key}><span>{direction.label} · {STATUS_LABEL[direction.status]}</span><p>{direction.text}</p></div>) : <p className="broker-direction-done">여섯 가지 협의 항목이 모두 정리됐습니다. 합의 내용을 공동 문서에 옮기고 계약서는 전문가와 함께 작성해주세요.</p>}<small>추천은 참고용 선택지이며 결정은 양측이 직접 합니다.</small></div>
+          <ul className="broker-chips" aria-label="협의 항목 상태">{agenda.map((item) => <li key={item.key} className={item.status} title={item.note}>{item.label}<span>{STATUS_LABEL[item.status]}</span></li>)}</ul>
           {brokerError && <p className="login-error" role="alert">{brokerError}</p>}
           <button type="button" className="button full-button" onClick={askBroker} disabled={brokerBusy}>{brokerBusy ? "대화를 정리하는 중..." : "중개 에이전트에게 정리 요청"}</button>
           {nextSteps.length > 0 && <div className="broker-next"><b><ClipboardCheck size={14}/> 다음에 정할 것</b><ol>{nextSteps.map((step) => <li key={step}>{step}</li>)}</ol></div>}
