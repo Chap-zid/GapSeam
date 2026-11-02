@@ -265,11 +265,13 @@ function CauseCard({ p, k, icon: Icon, title, text, image, imageAlt }: { p: P; k
   const scale = useTransform(p, (v) => 1 - 0.06 * ARRIVE.slice(k + 1).reduce((n, a) => n + smooth(a - 0.2, a, v), 0));
   const filter = useTransform(scale, (s) => `brightness(${(1 - (1 - s) * 1.2).toFixed(3)})`);
   return <motion.article style={{ y, rotate, scale, filter, "--k": k } as unknown as CSSProperties}>
-    <span>0{k + 1}</span>
     <div className={`st-cause-image${k === 0 ? " st-cause-image-news" : ""}`}>
       <Image src={image} alt={imageAlt} fill sizes="(max-width: 900px) min(460px, 100vw), 536px"/>
     </div>
-    <Icon size={40}/><h3>{title}</h3><p>{text}</p>
+    <div className="st-cause-content">
+      <div className="st-cause-heading"><Icon size={30}/><h3>{title}</h3><span className="st-cause-number">0{k + 1}</span></div>
+      <p>{text}</p>
+    </div>
   </motion.article>;
 }
 
