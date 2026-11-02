@@ -291,7 +291,7 @@ function Users({ p }: { p: P }) {
         <line className="base" x1="0" y1="2" x2="100" y2="2"/>
         <motion.line className="live" x1="0" y1="2" x2="100" y2="2" style={{ pathLength: draw }}/>
       </svg>
-      <div className="st-core"><motion.div style={{ scale: core, rotate: coreRotate }}><b>빈</b><small>빈틈이음</small></motion.div></div>
+      <div className="st-core"><motion.div style={{ scale: core, rotate: coreRotate }}><Home className="st-core-mark" size={52} strokeWidth={2.4} aria-hidden="true"/><small>빈틈이음</small></motion.div></div>
       <motion.article className="st-side" style={{ x: rx, opacity: sideOpacity }}><UserRound size={26}/><h3>공간 이용 희망자</h3>{SEEKER.map((t, i) => <Chip key={t} text={t} linked={linked} i={i}/>)}</motion.article>
     </div>
   </div>;
