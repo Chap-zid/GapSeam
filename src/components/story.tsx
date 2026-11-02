@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, MotionConfig, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Variants } from "motion/react";
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { ArrowRight, Calculator, Check, ChevronDown, CircleHelp, FileCheck2, Handshake, Home, Landmark, Lightbulb, MapPinned, Search, ShieldCheck, Unlink, UserRound, X } from "lucide-react";
 
 // 랜딩 스크롤 스토리. 장면마다 sticky 무대를 두고, 그 장면의 스크롤 진행도(p, 0~1)로 Motion 값을 만듭니다.
@@ -14,6 +14,14 @@ type Pt = [number, number];
 const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const smooth = (a: number, b: number, v: number) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
 const spring = { type: "spring", stiffness: 140, damping: 18 } as const;
+const staticStoryQuery = "(max-width: 620px), (max-height: 600px)";
+const subscribeStaticStory = (callback: () => void) => {
+  const media = window.matchMedia(staticStoryQuery);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+};
+const getStaticStory = () => window.matchMedia(staticStoryQuery).matches;
+const getServerStaticStory = () => false;
 
 /* ---------- 배경 모핑 도형 ---------- */
 
@@ -116,12 +124,11 @@ function Backdrop() {
 
 /* ---------- 공용 조각 ---------- */
 
-function Scene({ name, len, rest = 1, children }: { name: string; len: number; rest?: number; children: (p: P) => ReactNode }) {
+function Scene({ name, len, rest = 1, staticStory, children }: { name: string; len: number; rest?: number; staticStory: boolean; children: (p: P) => ReactNode }) {
   const ref = useRef<HTMLElement>(null);
-  const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const still = useMotionValue(rest);
-  const p = reduce ? still : scrollYProgress;
+  const p = staticStory ? still : scrollYProgress;
   // 수백 개 칸처럼 CSS로 처리하는 게 가벼운 효과를 위해 --p도 함께 넣어둡니다.
   useMotionValueEvent(p, "change", (v) => ref.current?.style.setProperty("--p", v.toFixed(4)));
   useEffect(() => { ref.current?.style.setProperty("--p", p.get().toFixed(4)); }, [p]);
@@ -199,6 +206,10 @@ function Hero({ p }: { p: P }) {
         <span aria-hidden><Letters text="비어 있는 공간을,"/><br/><Letters text="필요한 사람에게."/></span>
       </motion.h1>
       <motion.span className="st-hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}>내려서 이야기 보기 <ChevronDown size={18}/></motion.span>
+      <div className="st-hero-actions">
+        <Link className="button" href="/spaces">공간 찾아보기 <ArrowRight size={18}/></Link>
+        <Link className="button secondary" href="/owner/new">내 공간 등록하기</Link>
+      </div>
     </motion.div>
     <motion.div className="st-hero-photo" style={{ clipPath }} initial={{ y: 120, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 55, damping: 16, delay: 0.55 }}>
       <motion.div className="st-hero-img" style={{ scale: imgScale }}>
@@ -233,9 +244,9 @@ function Count({ p }: { p: P }) {
 }
 
 const CAUSES = [
-  { icon: Landmark, title: "철거하면 세금이 오릅니다", text: "빈집을 허물어 나대지가 되면 재산세 부담이 커집니다.", image: "/images/card_image_1.png", imageAlt: "빈집 철거와 재산세에 관한 기사" },
-  { icon: CircleHelp, title: "무엇에, 얼마에 쓸지 모릅니다", text: "소유자 혼자서는 활용 방법과 적정 가격을 판단하기 어렵습니다.", image: "/images/card_image_2.png", imageAlt: "빈 공간에서 활용 방안을 고민하는 소유자" },
-  { icon: Unlink, title: "이어줄 길이 없습니다", text: "쓸 수 있는 공간도, 찾는 사람도 있지만 둘을 연결할 수단이 없습니다.", image: "/images/card_image_3.png", imageAlt: "임대 안내문이 붙은 빈 상가" },
+  { icon: Landmark, title: "철거하면 세금이 오릅니다", text: "빈집을 허물어 나대지가 되면 재산세 부담이 커집니다.", image: "/images/card_image_1.webp", imageAlt: "빈집 철거와 재산세에 관한 기사" },
+  { icon: CircleHelp, title: "무엇에, 얼마에 쓸지 모릅니다", text: "소유자 혼자서는 활용 방법과 적정 가격을 판단하기 어렵습니다.", image: "/images/card_image_2.webp", imageAlt: "빈 공간에서 활용 방안을 고민하는 소유자" },
+  { icon: Unlink, title: "이어줄 길이 없습니다", text: "쓸 수 있는 공간도, 찾는 사람도 있지만 둘을 연결할 수단이 없습니다.", image: "/images/card_image_3.webp", imageAlt: "임대 안내문이 붙은 빈 상가" },
 ];
 const ARRIVE = [0, 0.3, 0.6];
 function Cause({ p }: { p: P }) {
@@ -273,9 +284,10 @@ function Chip({ text, linked, i }: { text: string; linked: boolean; i: number })
 }
 const OWNER = ["어디에 쓸지 모름", "가격을 정하기 어려움", "이용자를 찾기 어려움"];
 const SEEKER = ["빈 공간 정보가 없음", "예산·위치가 맞지 않음", "상태를 일일이 확인"];
-function Users({ p }: { p: P }) {
-  const [linked, setLinked] = useState(() => p.get() > 0.5);
+function Users({ p, staticStory }: { p: P; staticStory: boolean }) {
+  const [isLinked, setLinked] = useState(() => p.get() > 0.5);
   useMotionValueEvent(p, "change", (v) => setLinked(v > 0.5));
+  const linked = staticStory || isLinked;
   const lx = useTransform(p, [0, 0.5], ["-7vw", "0vw"]), rx = useTransform(p, [0, 0.5], ["7vw", "0vw"]);
   const sideOpacity = useTransform(p, [0, 0.5], [0.5, 1]);
   const draw = useTransform(p, [0.28, 0.55], [0, 1]);
@@ -308,8 +320,7 @@ const STEPS = [
   { icon: Search, title: "이용자 탐색", text: "조건이 맞는 이용 희망자를 자동으로 찾습니다", demo: ["용도", "지역", "면적", "예산"] },
   { icon: Handshake, title: "연결과 승인", text: "소유자가 확인하고 승인하면 제안이 전송됩니다", demo: ["조건 확인", "가격 수정", "승인"] },
 ];
-function Flow({ p }: { p: P }) {
-  const reduce = useReducedMotion();
+function Flow({ p, staticStory }: { p: P; staticStory: boolean }) {
   const track = useRef<HTMLDivElement>(null), shift = useRef(0);
   const [on, setOn] = useState(0);
   useEffect(() => {
@@ -324,8 +335,8 @@ function Flow({ p }: { p: P }) {
   return <div className="st-flow-inner">
     <div className="st-flow-head"><h2>등록부터 연결까지, 다섯 단계</h2><div className="st-rail"><motion.i style={{ scaleX: rail }}/></div></div>
     <div className="st-viewport">
-      <motion.div className="st-track" ref={track} style={{ x: reduce ? 0 : x }}>
-        {STEPS.map(({ icon: Icon, title, text, demo }, k) => { const active = reduce || k === on; return <motion.article className={`st-step${active ? " on" : ""}`} key={title}
+      <motion.div className="st-track" ref={track} style={{ x: staticStory ? 0 : x }}>
+        {STEPS.map(({ icon: Icon, title, text, demo }, k) => { const active = staticStory || k === on; return <motion.article className={`st-step${active ? " on" : ""}`} key={title}
           animate={{ scale: active ? 1 : 0.92, opacity: active ? 1 : 0.42 }} transition={{ type: "spring", stiffness: 200, damping: 24 }}>
           <span className="st-step-num">0{k + 1}</span><Icon size={34}/><h3>{title}</h3><p>{text}</p>
           <div className="st-demo">{demo.map((d, i) => <motion.em key={d} animate={{ opacity: active ? 1 : 0, y: active ? 0 : 12 }} transition={{ type: "spring", stiffness: 260, damping: 20, delay: active ? 0.1 + i * 0.06 : 0 }}>{d}</motion.em>)}</div>
@@ -343,12 +354,15 @@ const GATES = [
   { title: "변경 제한", text: "확정된 매칭은 누구도 수정하거나 지울 수 없습니다" },
 ];
 const gateAt = (v: number) => Math.min(GATES.length - 1, Math.floor(clamp(v * 1.05) * GATES.length));
-function Safety({ p }: { p: P }) {
+function Safety({ p, staticStory }: { p: P; staticStory: boolean }) {
   const [on, setOn] = useState(() => gateAt(p.get()));
   useMotionValueEvent(p, "change", (v) => setOn(gateAt(v)));
   const fill = useTransform(p, (v) => `${(clamp((v * 5.25 - 0.5) / 4) * 100).toFixed(2)}%`);
   return <div className="st-safety-inner">
     <h2><ShieldCheck size={30}/> AI가 틀려도,<br/>바로 실행되지 않습니다.</h2>
+    {staticStory ? <ol className="st-gate-list">
+      {GATES.map((gate, k) => <li key={gate.title}><b>{k + 1}</b><div><h3>{gate.title}</h3><p>{gate.text}</p></div></li>)}
+    </ol> : <>
     <div className="st-gates">
       <div className="st-pipe"><motion.i style={{ width: fill }}/></div>
       {GATES.map((g, k) => <div className="st-gate" key={g.title}>
@@ -363,6 +377,7 @@ function Safety({ p }: { p: P }) {
         </motion.div>
       </AnimatePresence>
     </div>
+    </>}
   </div>;
 }
 
@@ -395,20 +410,22 @@ const USES = [
 const rise = { initial: { opacity: 0, y: 40 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.5 }, transition: spring };
 
 export function Story() {
+  const mobileStory = useSyncExternalStore(subscribeStaticStory, getStaticStory, getServerStaticStory);
+  const reduce = useReducedMotion();
+  const staticStory = mobileStory || Boolean(reduce);
   const { scrollYProgress } = useScroll();
   const bar = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
-  return <MotionConfig reducedMotion="user"><main className="st">
-    <motion.div className="st-progress" style={{ scaleX: bar }} aria-hidden/>
-    <Backdrop/>
+  return <MotionConfig reducedMotion="user"><main className={`st${staticStory ? " st-static" : ""}`}>
+    {!staticStory && <><motion.div className="st-progress" style={{ scaleX: bar }} aria-hidden/><Backdrop/></>}
 
-    <Scene name="hero" len={2.4} rest={0}>{(p) => <Hero p={p}/>}</Scene>
-    <Scene name="question" len={2.2}>{(p) => <Question p={p}/>}</Scene>
-    <Scene name="count" len={3}>{(p) => <Count p={p}/>}</Scene>
-    <Scene name="cause" len={3.4}>{(p) => <Cause p={p}/>}</Scene>
-    <Scene name="users" len={3}>{(p) => <Users p={p}/>}</Scene>
-    <Scene name="flow" len={5}>{(p) => <Flow p={p}/>}</Scene>
-    <Scene name="safety" len={4}>{(p) => <Safety p={p}/>}</Scene>
-    <Scene name="vision" len={3}>{(p) => <Vision p={p}/>}</Scene>
+    <Scene name="hero" len={2.4} rest={0} staticStory={staticStory}>{(p) => <Hero p={p}/>}</Scene>
+    <Scene name="question" len={2.2} staticStory={staticStory}>{(p) => <Question p={p}/>}</Scene>
+    <Scene name="count" len={3} staticStory={staticStory}>{(p) => <Count p={p}/>}</Scene>
+    <Scene name="cause" len={3.4} staticStory={staticStory}>{(p) => <Cause p={p}/>}</Scene>
+    <Scene name="users" len={3} staticStory={staticStory}>{(p) => <Users p={p} staticStory={staticStory}/>}</Scene>
+    <Scene name="flow" len={5} staticStory={staticStory}>{(p) => <Flow p={p} staticStory={staticStory}/>}</Scene>
+    <Scene name="safety" len={4} staticStory={staticStory}>{(p) => <Safety p={p} staticStory={staticStory}/>}</Scene>
+    <Scene name="vision" len={3} staticStory={staticStory}>{(p) => <Vision p={p}/>}</Scene>
 
     <section className="st-team shell">
       <motion.p className="st-kicker" {...rise}>대전대신고등학교 · 2026 AI 동행 프로젝트 메이커톤</motion.p>
