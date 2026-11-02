@@ -21,5 +21,5 @@ const paperlogy = localFont({
 });
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko" className={paperlogy.variable}><body><SessionProvider><ModeBanner/><Navbar /><AccessGate>{children}</AccessGate><footer className="site-footer"><div className="shell"><b>빈틈이음</b><span>비어 있는 공간에, 다음 이야기를.</span><small>v{version}</small></div></footer></SessionProvider></body></html>;
+  return <html lang="ko" className={paperlogy.variable} data-scroll-behavior="smooth"><body><SessionProvider><ModeBanner/><Navbar /><AccessGate>{children}</AccessGate><footer className="site-footer"><div className="shell"><b>빈틈이음</b><span>비어 있는 공간에, 다음 이야기를.</span><small>v{version}</small></div></footer></SessionProvider></body></html>;
 }

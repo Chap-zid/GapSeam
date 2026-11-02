@@ -48,10 +48,10 @@ export function AgentAssistant({ kind, values, onFill }: { kind: AssistKind; val
     setBusy(true);
     try {
       const token = await auth?.currentUser?.getIdToken();
-      if (!token) throw new Error("Authentication required");
+      if (!token && process.env.NEXT_PUBLIC_DEMO_MODE !== "true") throw new Error("Authentication required");
       const response = await fetch("/api/assist", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ kind, message: question, history, current: latestValues.current }),
       });
       if (!response.ok) throw new Error(`Assist endpoint ${response.status}`);

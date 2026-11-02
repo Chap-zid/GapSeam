@@ -15,7 +15,8 @@ export default function OwnerDashboard() {
   const [matches, setMatches] = useState<SpaceMatch[]>([]);
   const [requests, setRequests] = useState<Record<string, SpaceRequest>>({});
   const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
+  // 어느 연결에서 실패했는지 함께 기억해야 처리 중 상태가 풀린 뒤에도 오류 문구가 해당 카드에 남습니다.
+  const [error, setError] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "owner") return;
@@ -27,9 +28,9 @@ export default function OwnerDashboard() {
 
   async function respond(id: string, status: "accepted" | "rejected") {
     if (busy) return;
-    setBusy(id); setError("");
+    setBusy(id); setError(null);
     try { await respondToMatch(id, status); }
-    catch { setError("신청 응답을 저장하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요."); }
+    catch { setError({ id, message: "신청 응답을 저장하지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요." }); }
     finally { setBusy(""); }
   }
 
@@ -44,7 +45,7 @@ export default function OwnerDashboard() {
         <div className="proposal-top"><div><h3>{request?.seekerName || "이용자 정보를 불러오는 중"}</h3><p>{request?.purpose || "등록된 공간 요청"}</p></div><StatusBadge status={match.status}/></div>
         <div className="match-mini-score"><span>수요–공간 적합도</span><b><CountUp value={match.score}/>%</b></div>
         <p className="dashboard-match-reason">{match.reason}</p>
-        {error && busy === match.id && <p className="login-error" role="alert">{error}</p>}
+        {error?.id === match.id && <p className="login-error" role="alert">{error.message}</p>}
         {incoming ? <div className="proposal-actions"><button className="button secondary" disabled={!!busy} onClick={() => void respond(match.id, "rejected")}><X size={17}/> 거절</button><button className="button" disabled={!!busy} onClick={() => void respond(match.id, "accepted")}><CheckCircle2 size={17}/> 신청 수락</button></div> : match.status === "accepted" ? <><MatchStatus status={match.status}/><Link className="button full-button" href={`/matches/${match.id}`}><MessageCircle size={17}/> 채팅과 공동 문서</Link></> : <MatchStatus status={match.status}/>} {/* 상태별 동작 */}
       </div>; })}</div></aside>
     </div>
