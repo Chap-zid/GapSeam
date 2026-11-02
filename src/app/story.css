@@ -54,7 +54,10 @@
 .st-deck { position:relative; height:min(420px, 56svh); }
 .st-deck article { position:absolute; inset:0; top:calc(var(--k) * 22px); display:flex; flex-direction:column; padding:36px; border-radius:30px; background:#fff; border:1px solid #f0e6d8; box-shadow:0 -10px 40px #8a5a1a14; transform-origin:50% 0; }
 .st-deck span { font-size:15px; font-weight:800; color:var(--orange-dark); }
-.st-deck svg { margin-top:auto; color:var(--orange-dark); }
+.st-cause-image { position:relative; flex:1 1 0; min-height:0; margin:12px 0; overflow:hidden; border-radius:14px; background:#f7f2eb; }
+.st-cause-image img { object-fit:cover; }
+.st-cause-image-news img { object-fit:contain; }
+.st-deck svg { flex-shrink:0; color:var(--orange-dark); }
 .st-deck h3 { font-size:clamp(22px, 2.4vw, 30px); margin:18px 0 10px; }
 .st-deck p { color:#7a6f61; font-size:17px; line-height:1.6; }
 
@@ -159,8 +162,10 @@
   .st-num { justify-content:center; }
   .st-cells { justify-self:center; }
   .st-cause-grid { gap:26px; }
-  .st-deck { height:min(300px, 40svh); width:100%; max-width:460px; justify-self:center; text-align:left; }
-  .st-deck article { padding:24px; }
+  .st-deck { height:min(360px, 45svh); width:100%; max-width:460px; justify-self:center; text-align:left; }
+  .st-deck article { top:calc(var(--k) * 12px); padding:24px; }
+  .st-deck svg { width:28px; height:28px; }
+  .st-deck h3 { margin:8px 0 4px; }
   .st-deck p { font-size:15px; }
   .st-pair { flex-direction:column; gap:20px; margin-top:34px; min-height:0; }
   .st-link { display:none; }
@@ -204,6 +209,7 @@
   .st-hero-photo { position:relative; inset:auto; width:min(1200px, calc(100% - 32px)); height:56vh; margin:48px auto 0; clip-path:inset(0 round 28px) !important; }
   .st-deck { height:auto; display:grid; gap:14px; }
   .st-deck article { position:relative; inset:auto; top:auto; }
+  .st-cause-image { flex:none; height:180px; }
   .st-track { flex-wrap:wrap; width:auto; justify-content:center; padding-right:24px; }
   .st-viewport { padding-left:24px; }
   .st-vision .st-stage { min-height:70vh; }

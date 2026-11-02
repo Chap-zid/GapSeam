@@ -233,9 +233,9 @@ function Count({ p }: { p: P }) {
 }
 
 const CAUSES = [
-  { icon: Landmark, title: "철거하면 세금이 오릅니다", text: "빈집을 허물어 나대지가 되면 재산세 부담이 커집니다." },
-  { icon: CircleHelp, title: "무엇에, 얼마에 쓸지 모릅니다", text: "소유자 혼자서는 활용 방법과 적정 가격을 판단하기 어렵습니다." },
-  { icon: Unlink, title: "이어줄 길이 없습니다", text: "쓸 수 있는 공간도, 찾는 사람도 있지만 둘을 연결할 수단이 없습니다." },
+  { icon: Landmark, title: "철거하면 세금이 오릅니다", text: "빈집을 허물어 나대지가 되면 재산세 부담이 커집니다.", image: "/images/card_image_1.png", imageAlt: "빈집 철거와 재산세에 관한 기사" },
+  { icon: CircleHelp, title: "무엇에, 얼마에 쓸지 모릅니다", text: "소유자 혼자서는 활용 방법과 적정 가격을 판단하기 어렵습니다.", image: "/images/card_image_2.png", imageAlt: "빈 공간에서 활용 방안을 고민하는 소유자" },
+  { icon: Unlink, title: "이어줄 길이 없습니다", text: "쓸 수 있는 공간도, 찾는 사람도 있지만 둘을 연결할 수단이 없습니다.", image: "/images/card_image_3.png", imageAlt: "임대 안내문이 붙은 빈 상가" },
 ];
 const ARRIVE = [0, 0.3, 0.6];
 function Cause({ p }: { p: P }) {
@@ -248,13 +248,17 @@ function Cause({ p }: { p: P }) {
   </div>;
 }
 // 다음 카드가 위로 쌓일 때마다 아래 카드는 조금씩 작아집니다.
-function CauseCard({ p, k, icon: Icon, title, text }: { p: P; k: number; icon: typeof Landmark; title: string; text: string }) {
+function CauseCard({ p, k, icon: Icon, title, text, image, imageAlt }: { p: P; k: number; icon: typeof Landmark; title: string; text: string; image: string; imageAlt: string }) {
   const y = useTransform(p, [ARRIVE[k] - 0.2, ARRIVE[k]], ["120%", "0%"]);
   const rotate = useTransform(p, [ARRIVE[k] - 0.2, ARRIVE[k]], [10, 0]);
   const scale = useTransform(p, (v) => 1 - 0.06 * ARRIVE.slice(k + 1).reduce((n, a) => n + smooth(a - 0.2, a, v), 0));
   const filter = useTransform(scale, (s) => `brightness(${(1 - (1 - s) * 1.2).toFixed(3)})`);
   return <motion.article style={{ y, rotate, scale, filter, "--k": k } as unknown as CSSProperties}>
-    <span>0{k + 1}</span><Icon size={40}/><h3>{title}</h3><p>{text}</p>
+    <span>0{k + 1}</span>
+    <div className={`st-cause-image${k === 0 ? " st-cause-image-news" : ""}`}>
+      <Image src={image} alt={imageAlt} fill sizes="(max-width: 900px) min(460px, 100vw), 536px"/>
+    </div>
+    <Icon size={40}/><h3>{title}</h3><p>{text}</p>
   </motion.article>;
 }
 
