@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, UserRound } from "lucide-react";
+import { Home, Menu, X, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { useSession } from "./session-provider";
@@ -28,7 +28,7 @@ export function Navbar() {
   ];
   return <header className="nav-wrap">
     <nav className="nav shell">
-      <Link href="/" className="brand"><span className="brand-mark">빈</span>빈틈이음</Link>
+      <Link href="/" className="brand"><span className="brand-mark" aria-hidden="true"><Home size={17} strokeWidth={2.6}/></span>빈틈이음</Link>
       <button className="mobile-menu" onClick={() => setOpen(!open)} aria-label="메뉴">{open ? <X /> : <Menu />}</button>
       <div className={`nav-links ${open ? "open" : ""}`}>
         {links.map((l) => <Link onClick={()=>setOpen(false)} className={pathname === l.href ? "active" : ""} href={l.href} key={l.href}>{l.label}</Link>)}
