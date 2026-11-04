@@ -7,6 +7,8 @@ import { AgentAssistant } from "@/components/agent-assistant";
 import { useSession } from "@/components/session-provider";
 import { PERIODS, type AssistFields } from "@/lib/assist";
 import { saveRequest } from "@/lib/services";
+import { DEFAULT_WEIGHTS, normalizeWeights } from "@/lib/matching";
+import type { MatchWeights } from "@/lib/types";
 
 type RequestForm = { purpose: string; description: string; region: string; minArea: string; maxArea: string; maxBudget: string; people: string; period: string };
 const EMPTY: RequestForm = { purpose: "", description: "", region: "", minArea: "", maxArea: "", maxBudget: "", people: "", period: "" };
@@ -14,6 +16,7 @@ const EMPTY: RequestForm = { purpose: "", description: "", region: "", minArea: 
 export default function RequestFormPage() {
   const router = useRouter(); const { user } = useSession(); const [saving,setSaving]=useState(false); const [error,setError]=useState("");
   const [form,setForm]=useState<RequestForm>(EMPTY); const [flash,setFlash]=useState<Record<string,boolean>>({}); const timers=useRef<number[]>([]);
+  const [weights,setWeights]=useState<MatchWeights>(DEFAULT_WEIGHTS);
   // 에이전트가 채운 항목은 잠시 강조해서 어떤 값이 바뀌었는지 보이게 합니다.
   const fill=useCallback((field:keyof AssistFields,value:AssistFields[keyof AssistFields])=>{ setForm((old)=>({...old,[field]:Array.isArray(value)?value.join(", "):String(value)}) as RequestForm); setFlash((old)=>({...old,[field]:true})); timers.current.push(window.setTimeout(()=>setFlash((old)=>({...old,[field]:false})),1100)); },[]);
   useEffect(()=>()=>{ timers.current.forEach((timer)=>window.clearTimeout(timer)); },[]);
@@ -23,8 +26,11 @@ export default function RequestFormPage() {
     e.preventDefault(); if(!user||user.role!=='seeker')return;
     const minArea=Number(form.minArea); const maxBudget=Number(form.maxBudget);
     if(!form.purpose.trim()||!form.region.trim()||!Number.isFinite(minArea)||minArea<=0||!Number.isFinite(maxBudget)||maxBudget<=0){ setError("활용 목적, 희망 지역, 최소 면적, 월 최대 예산은 반드시 입력해주세요."); return; }
+    if(form.maxArea && (!Number.isFinite(Number(form.maxArea)) || Number(form.maxArea)<minArea)){ setError("최대 면적은 최소 면적 이상이어야 합니다."); return; }
+    let matchWeights: MatchWeights;
+    try { matchWeights=normalizeWeights(weights); } catch (reason) { setError(reason instanceof Error ? reason.message : "중요도를 확인해주세요."); return; }
     setSaving(true); setError("");
-    try { await saveRequest({ seekerId:user.uid, seekerName:user.name, purpose:form.purpose.trim(), description:form.description.trim(), region:form.region.trim(), minArea, maxArea:Number(form.maxArea)||0, maxBudget, people:Number(form.people)||1, period:form.period||'1년 이상' });
+    try { await saveRequest({ seekerId:user.uid, seekerName:user.name, purpose:form.purpose.trim(), description:form.description.trim(), region:form.region.trim(), minArea, maxArea:Number(form.maxArea)||0, maxBudget, people:Number(form.people)||1, period:form.period||'1년 이상', matchWeights });
       router.push('/seeker/dashboard?created=1'); }
     catch {setError("요청을 저장하지 못했습니다. 입력 내용은 유지되니 다시 시도해주세요."); setSaving(false);}
   }
@@ -36,12 +42,15 @@ export default function RequestFormPage() {
         <div className={`${cls('description')} full`}><label>필요한 공간 설명</label><textarea name="description" value={form.description} onChange={(e)=>set('description',e.target.value)} placeholder="예: 4명이 사용할 도자기 공방을 찾고 있습니다. 작업과 소규모 클래스를 함께 진행할 예정입니다."/></div>
       </div></section>
       <section className="form-section"><h2>희망 조건</h2><div className="form-grid">
-        <div className={`${cls('region')} full`}><label>희망 지역 <span className="required">*</span></label><input name="region" value={form.region} onChange={(e)=>set('region',e.target.value)} placeholder="예: 대전 동구" required/></div>
+        <div className={`${cls('region')} full`}><label>희망 지역 기준 주소 <span className="required">*</span></label><input name="region" value={form.region} onChange={(e)=>set('region',e.target.value)} placeholder="예: 대전광역시 동구 중앙로 215" required/><p className="help">직선거리 계산을 위해 건물번호 또는 지번까지 입력해주세요.</p></div>
         <div className={cls('minArea')}><label>최소 면적 <span className="required">*</span></label><input name="minArea" type="number" min="1" value={form.minArea} onChange={(e)=>set('minArea',e.target.value)} placeholder="예: 50" required/><p className="help">단위: ㎡</p></div>
         <div className={cls('maxArea')}><label>최대 면적</label><input name="maxArea" type="number" min="1" value={form.maxArea} onChange={(e)=>set('maxArea',e.target.value)} placeholder="예: 80"/><p className="help">단위: ㎡</p></div>
         <div className={cls('maxBudget')}><label>월 최대 예산 <span className="required">*</span></label><input name="maxBudget" type="number" min="1" value={form.maxBudget} onChange={(e)=>set('maxBudget',e.target.value)} placeholder="예: 50" required/><p className="help">단위: 만 원</p></div>
         <div className={cls('people')}><label>이용 인원</label><input name="people" type="number" min="1" value={form.people} onChange={(e)=>set('people',e.target.value)} placeholder="예: 4"/></div>
         <div className={`${cls('period')} full`}><label>희망 이용 기간</label><select name="period" value={form.period} onChange={(e)=>set('period',e.target.value)}><option value="">선택해주세요</option>{PERIODS.map((v)=><option key={v}>{v}</option>)}</select></div>
+      </div></section>
+      <section className="form-section"><h2>매칭 중요도</h2><p className="help">각 항목의 상대적 중요도입니다. 합계가 100%가 되도록 자동 환산합니다.</p><div className="form-grid">
+        {([["region","위치"],["budget","예산"],["area","면적"],["purpose","활용 목적"]] as const).map(([key,label])=><div className="field" key={key}><label htmlFor={`weight-${key}`}>{label}</label><input id={`weight-${key}`} type="number" min="0" step="0.05" value={weights[key]} onChange={(event)=>setWeights((current)=>({...current,[key]:event.target.value === "" ? 0 : Number(event.target.value)}))}/></div>)}
       </div></section>
       {error&&<p className="login-error" role="alert">{error}</p>}<button className="button form-submit" disabled={saving}>{saving?'요청을 등록하고 있습니다...':'공간 요청 등록하기'}</button>
     </form><div className="form-aside"><AgentAssistant kind="request" values={{purpose:form.purpose,description:form.description,region:form.region,minArea:Number(form.minArea)||undefined,maxArea:Number(form.maxArea)||undefined,maxBudget:Number(form.maxBudget)||undefined,people:Number(form.people)||undefined,period:form.period}} onFill={fill}/><aside className="side-card reveal delay-2"><div className="role-icon"><FileText/></div><h3>등록하면 이렇게 진행돼요</h3><ul><li><Check size={17}/>입력한 조건이 구조화되어 저장됩니다.</li><li><Check size={17}/>새 공간이 등록되면 조건을 자동으로 비교합니다.</li><li><Check size={17}/>소유자가 승인한 제안만 전달됩니다.</li><li><Check size={17}/>수락 전에는 연락처가 공개되지 않습니다.</li></ul></aside></div></div>

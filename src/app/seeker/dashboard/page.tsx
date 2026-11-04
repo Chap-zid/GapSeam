@@ -6,8 +6,9 @@ import { Bell, CheckCircle2, Inbox, MapPin, MessageCircle, Plus, Ruler, Search, 
 import { useEffect, useState } from "react";
 import { CountUp, MatchStatus, StatusBadge } from "@/components/ui";
 import { useSession } from "@/components/session-provider";
-import { getSpace, respondToMatch, watchMatches, watchRequests } from "@/lib/services";
-import type { Space, SpaceMatch, SpaceRequest } from "@/lib/types";
+import { getSpace, respondToMatch, updateRequestWeights, watchMatches, watchRequests } from "@/lib/services";
+import { DEFAULT_WEIGHTS } from "@/lib/matching";
+import type { MatchWeights, Space, SpaceMatch, SpaceRequest } from "@/lib/types";
 
 export default function SeekerDashboard() {
   const { user, ready } = useSession();
@@ -15,6 +16,10 @@ export default function SeekerDashboard() {
   const [matches, setMatches] = useState<SpaceMatch[]>([]);
   const [spaces, setSpaces] = useState<Record<string, Space>>({});
   const [busy, setBusy] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const [weightEditor, setWeightEditor] = useState<{ id: string; weights: MatchWeights } | null>(null);
+  const [weightError, setWeightError] = useState("");
+  const [weightSaving, setWeightSaving] = useState(false);
   // 어느 연결에서 실패했는지 함께 기억해야 처리 중 상태가 풀린 뒤에도 오류 문구가 해당 카드에 남습니다.
   const [error, setError] = useState<{ id: string; message: string } | null>(null);
 
@@ -34,8 +39,16 @@ export default function SeekerDashboard() {
     finally { setBusy(""); }
   }
 
+  async function saveWeights() {
+    if (!user || !weightEditor || weightSaving) return;
+    setWeightSaving(true); setWeightError("");
+    try { await updateRequestWeights(weightEditor.id, user.uid, weightEditor.weights); setWeightEditor(null); }
+    catch (reason) { setWeightError(reason instanceof Error ? reason.message : "중요도를 저장하지 못했습니다."); }
+    finally { setWeightSaving(false); }
+  }
+
   if (!ready || !user) return <main className="page"><div className="shell">불러오는 중...</div></main>;
-  const request = requests[0];
+  const request = requests.find((item) => item.id === selectedId) || requests[0];
   const active = [...matches].reverse();
 
   return <main className="page"><div className="shell">
@@ -49,6 +62,8 @@ export default function SeekerDashboard() {
           {incoming ? <div className="proposal-actions"><button disabled={!!busy} className="button secondary" onClick={() => void respond(match.id, "rejected")}>거절</button><button disabled={!!busy} className="button" onClick={() => void respond(match.id, "accepted")}><CheckCircle2 size={18}/> 제안 수락</button></div> : match.status === "accepted" ? <><MatchStatus status={match.status}/><Link className="button full-button" href={`/matches/${match.id}`}><MessageCircle size={17}/> 채팅과 공동 문서</Link></> : <MatchStatus status={match.status}/>}</div></article>
         </div>; })}
       </div></section>
-    </div><aside className="content-card"><div className="card-title"><h2>내 공간 요청</h2></div>{request ? <div className="card-pad"><span className="status-badge accepted">요청 중</span><h3 className="request-title">{request.purpose}</h3><p className="request-description">{request.description}</p><div className="request-condition-list"><div className="summary-item"><span><MapPin/>희망 지역</span><b>{request.region}</b></div><div className="summary-item"><span><Ruler/>최소 면적</span><b>{request.minArea}㎡ 이상</b></div><div className="summary-item"><span><Wallet/>최대 예산</span><b>월 {request.maxBudget}만 원 이하</b></div></div></div> : <div className="empty"><p>등록된 요청이 없습니다.</p><Link className="button small" href="/request/new">요청 등록하기</Link></div>}</aside></div>
+    </div><aside className="content-card"><div className="card-title"><h2>내 공간 요청</h2></div>{request ? <div className="card-pad">{requests.length>1&&<label className="application-select"><span>요청 선택</span><select value={request.id} onChange={(event)=>{setSelectedId(event.target.value);setWeightEditor(null);setWeightError("");}}>{requests.map((item)=><option key={item.id} value={item.id}>{item.purpose} · {item.region}</option>)}</select></label>}<span className="status-badge accepted">요청 중</span><h3 className="request-title">{request.purpose}</h3><p className="request-description">{request.description}</p><div className="request-condition-list"><div className="summary-item"><span><MapPin/>희망 지역</span><b>{request.region}</b></div><div className="summary-item"><span><Ruler/>최소 면적</span><b>{request.minArea}㎡ 이상</b></div><div className="summary-item"><span><Wallet/>최대 예산</span><b>월 {request.maxBudget}만 원 이하</b></div></div>
+      {weightEditor?.id===request.id ? <div><p>중요도는 합계가 100%가 되도록 환산됩니다.</p><div className="form-grid">{([["region","위치"],["budget","예산"],["area","면적"],["purpose","활용 목적"]] as const).map(([key,label])=><div className="field" key={key}><label htmlFor={`edit-weight-${key}`}>{label}</label><input id={`edit-weight-${key}`} type="number" min="0" step="0.05" value={weightEditor.weights[key]} onChange={(event)=>setWeightEditor({...weightEditor,weights:{...weightEditor.weights,[key]:event.target.value === "" ? 0 : Number(event.target.value)}})}/></div>)}</div>{weightError&&<p className="login-error" role="alert">{weightError}</p>}<button type="button" className="button small" disabled={weightSaving} onClick={()=>void saveWeights()}>중요도 저장</button> <button type="button" className="button secondary small" disabled={weightSaving} onClick={()=>setWeightEditor(null)}>취소</button></div> : <button type="button" className="button secondary small" onClick={()=>{setWeightError("");setWeightEditor({id:request.id,weights:request.matchWeights || DEFAULT_WEIGHTS});}}>매칭 중요도 변경</button>}
+    </div> : <div className="empty"><p>등록된 요청이 없습니다.</p><Link className="button small" href="/request/new">요청 등록하기</Link></div>}</aside></div>
   </div></main>;
 }

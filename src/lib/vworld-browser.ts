@@ -44,6 +44,16 @@ async function geocode(address: string, key: string, type: "ROAD" | "PARCEL", do
   return { longitude, latitude, refinedAddress: typeof refined.text === "string" ? refined.text : address } satisfies Coordinate;
 }
 
+export async function getMatchingCoordinate(address: string, token: string) {
+  const configResponse = await fetch("/api/vworld/config", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!configResponse.ok) throw new Error("VWorld 위치 조회 설정을 확인할 수 없습니다.");
+  const config = await configResponse.json() as { key?: string; domain?: string };
+  if (!config.key) throw new Error("VWorld 위치 조회 키가 없습니다.");
+  const domain = config.domain || window.location.host;
+  try { return await geocode(address, config.key, "ROAD", domain); }
+  catch { return geocode(address, config.key, "PARCEL", domain); }
+}
+
 function bbox(origin: Coordinate) {
   const latitudeDelta = 2 / 111.32;
   const longitudeDelta = 2 / (111.32 * Math.max(Math.cos(origin.latitude * Math.PI / 180), 0.2));

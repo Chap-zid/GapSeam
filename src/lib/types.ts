@@ -1,4 +1,6 @@
 export type Role = "owner" | "seeker";
+export type Coordinates = { latitude: number; longitude: number };
+export type MatchWeights = { region: number; budget: number; area: number; purpose: number };
 export type MatchStatus = "candidate" | "proposed" | "applied" | "accepted" | "rejected";
 export type MatchInitiator = "owner" | "seeker";
 
@@ -52,6 +54,7 @@ export type SpaceRequest = {
   maxBudget: number;
   people: number;
   period: string;
+  matchWeights?: MatchWeights;
   createdAt: unknown;
 };
 
@@ -66,7 +69,7 @@ export type SpaceMatch = {
   // 소유자가 최종 승인한 이용료입니다. AI 추정값을 그대로 쓰지 않습니다.
   approvedPrice?: string;
   initiator?: MatchInitiator;
-  algorithmVersion?: "fuzzy-mcda-v2";
+  algorithmVersion?: "fuzzy-mcda-v2" | "geometric-v3";
   status: MatchStatus;
   createdAt: unknown;
 };

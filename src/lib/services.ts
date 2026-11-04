@@ -2,10 +2,12 @@ import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, q
 import { getBlob, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, isFirebaseReady, storage } from "./firebase";
 import { demoId, readDemo, subscribeDemo, writeDemo } from "./demo-store";
-import { type ChatMessage, type ChatRole, type MatchDocument, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
+import { type ChatMessage, type ChatRole, type MatchDocument, type MatchWeights, type Role, type Space, type SpaceMatch, type SpaceRequest, type UserProfile } from "./types";
 import { BROKER_NAME } from "./broker";
 import { runSpaceAgent } from "./agent-tools";
-import { matchingTool, type MatchResult } from "./matching";
+import { matchingTool, normalizeWeights, type MatchResult } from "./matching";
+import { auth } from "./firebase";
+import { getMatchingCoordinate } from "./vworld-browser";
 import { withTimeout } from "./safety";
 
 export async function saveRequest(input: Omit<SpaceRequest, "id" | "createdAt">) {
@@ -15,6 +17,17 @@ export async function saveRequest(input: Omit<SpaceRequest, "id" | "createdAt">)
   }
   const ref = await addDoc(collection(db, "requests"), { ...input, createdAt: serverTimestamp() });
   return ref.id;
+}
+
+export async function updateRequestWeights(requestId: string, seekerId: string, weights: MatchWeights) {
+  const matchWeights = normalizeWeights(weights);
+  if (!isFirebaseReady || !db) {
+    const data = readDemo();
+    if (!data.requests.some((request) => request.id === requestId && request.seekerId === seekerId)) throw new Error("공간 요청을 찾을 수 없습니다.");
+    writeDemo({ ...data, requests: data.requests.map((request) => request.id === requestId ? { ...request, matchWeights } : request) });
+    return;
+  }
+  await updateDoc(doc(db, "requests", requestId), { matchWeights });
 }
 
 export async function uploadSpaceImages(spaceId: string, files: File[]) {
@@ -156,9 +169,9 @@ async function allRequests(): Promise<SpaceRequest[]> {
 // 등록된 모든 요청을 matchingTool로 채점한 뒤 점수순으로 정렬합니다.
 export async function rankRequests(space: Space): Promise<RankedRequest[]> {
   const requests = await allRequests();
-  return requests
-    .map((request) => ({ request, match: matchingTool(space, request) }))
-    .sort((left, right) => right.match.score - left.match.score);
+  const coordinates = await matchingCoordinates([space.address, ...requests.map((request) => request.region)]);
+  return requests.map((request) => ({ request, match: matchingTool(space, request, { space: coordinates.get(space.address), request: coordinates.get(request.region) }) }))
+    .sort((left, right) => (right.match.score ?? -1) - (left.match.score ?? -1));
 }
 
 export async function getRequest(requestId: string): Promise<SpaceRequest | null> {
@@ -166,12 +179,24 @@ export async function getRequest(requestId: string): Promise<SpaceRequest | null
   const snap = await getDoc(doc(db, "requests", requestId)); return snap.exists() ? { id: snap.id, ...snap.data() } as SpaceRequest : null;
 }
 
-export function calculateMatch(space: Space, request: SpaceRequest) {
-  return matchingTool(space, request);
+async function matchingCoordinates(addresses: string[]) {
+  const token = await auth?.currentUser?.getIdToken() || "";
+  const unique = [...new Set(addresses.filter(Boolean))];
+  const entries = await Promise.all(unique.map(async (address) => {
+    try { return [address, await getMatchingCoordinate(address, token)] as const; }
+    catch { return [address, undefined] as const; }
+  }));
+  return new Map(entries);
 }
 
-export async function sendProposal(space: Space, request: SpaceRequest, match?: MatchResult, approvedPrice?: string) {
-  const result = match || calculateMatch(space, request);
+export async function calculateMatch(space: Space, request: SpaceRequest, price?: string) {
+  const coordinates = await matchingCoordinates([space.address, request.region]);
+  return matchingTool(space, request, { space: coordinates.get(space.address), request: coordinates.get(request.region) }, price);
+}
+
+export async function sendProposal(space: Space, request: SpaceRequest, approvedPrice?: string) {
+  const result = await calculateMatch(space, request, approvedPrice);
+  if (result.score === null) throw new Error("이용료와 위치 등 필요한 정보를 확인한 뒤 제안해주세요.");
   const payload = { spaceId: space.id, requestId: request.id, ownerId: space.ownerId, seekerId: request.seekerId, score: result.score, reason: result.reason, approvedPrice: approvedPrice || space.analysis?.estimatedPrice || "협의", initiator: "owner" as const, algorithmVersion: result.algorithmVersion, status: "proposed" as const };
   if (!isFirebaseReady || !db) {
     const data = readDemo();
@@ -188,7 +213,8 @@ export async function sendProposal(space: Space, request: SpaceRequest, match?: 
 }
 
 export async function applyToSpace(space: Space, request: SpaceRequest, match?: MatchResult) {
-  const result = match || calculateMatch(space, request);
+  const result = match || await calculateMatch(space, request);
+  if (result.score === null) throw new Error("적합도 계산에 필요한 위치와 이용료 정보를 확인해주세요.");
   const id = `${space.id}__${request.id}`;
   const payload = { spaceId: space.id, requestId: request.id, ownerId: space.ownerId, seekerId: request.seekerId, score: result.score, reason: result.reason, approvedPrice: space.analysis?.estimatedPrice || "협의", initiator: "seeker" as const, algorithmVersion: result.algorithmVersion, status: "applied" as const };
   if (!isFirebaseReady || !db) {
