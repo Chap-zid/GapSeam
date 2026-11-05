@@ -131,7 +131,7 @@
 /* 팀 */
 .st-team { position:relative; z-index:1; padding:150px 0 40px; text-align:center; }
 .st-team h2 { font-size:clamp(30px, 4vw, 52px); margin:20px 0 48px; }
-.st-team-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; }
+.st-team-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
 .st-member { padding:28px 22px; border-radius:26px; background:#fff; border:1px solid #f0e6d8; text-align:left; }
 .st-member>i { width:56px; height:56px; display:grid; place-items:center; margin-bottom:22px; border-radius:20px 20px 20px 6px; background:var(--orange); color:#fff; font-style:normal; font-size:24px; font-weight:800; }
 .st-member small { color:#a85d00; font-weight:700; font-size:13px; }
@@ -159,7 +159,6 @@
 @keyframes st-bob { 50% { transform:translateY(6px); } }
 @keyframes st-ring { from { opacity:.7; transform:scale(.9); } to { opacity:0; transform:scale(1.25); } }
 
-@media (max-width:1100px) { .st-team-grid { grid-template-columns:repeat(3, 1fr); } }
 @media (max-width:900px) {
   .st-dots { display:none; }
   .st-split,.st-cause-grid { grid-template-columns:1fr; gap:34px; text-align:center; }
