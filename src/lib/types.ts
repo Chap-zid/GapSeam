@@ -1,5 +1,8 @@
+import type { CommerceEvidence, EvidenceItem, PriceEvidence } from "./evidence";
+
 export type Role = "owner" | "seeker";
-export type Coordinates = { latitude: number; longitude: number };
+// precision이 district이면 정확한 주소가 아니라 읍·면·동 또는 시·군·구 중심점입니다.
+export type Coordinates = { latitude: number; longitude: number; precision?: "address" | "district"; label?: string };
 export type MatchWeights = { region: number; budget: number; area: number; purpose: number };
 export type MatchStatus = "candidate" | "proposed" | "applied" | "accepted" | "rejected";
 export type MatchInitiator = "owner" | "seeker";
@@ -12,18 +15,35 @@ export type LocationEvidence = {
   summary: string;
   facilities: { category: string; name: string; distanceMeters: number }[];
   landUse: string[];
+  coordinate?: { longitude: number; latitude: number };
+};
+
+export type SuggestedUse = {
+  name: string;
+  score: number;
+  reasons: string[];
+  // caution은 규칙 기반 필터가 붙인 인허가 확인 안내입니다.
+  caution?: string;
+  // evidenceIds는 analysis.evidence의 항목 ID입니다. 서버가 실제로 제공한 근거만 남깁니다.
+  evidenceIds?: string[];
+  // 이유 문장에 나왔지만 근거·입력 어디에도 없는 숫자입니다.
+  unverifiedNumbers?: string[];
 };
 
 export type Analysis = {
   condition: string;
   surroundingEnvironment: string;
-  // caution은 규칙 기반 필터가 붙인 인허가 확인 안내입니다.
-  suggestedUses: { name: string; score: number; reasons: string[]; caution?: string }[];
+  suggestedUses: SuggestedUse[];
   estimatedRepairCost: string;
   estimatedPrice: string;
   estimatedIncome: string;
   paybackPeriod: string;
   safetyNotes?: string[];
+  // 가격이 실거래가로 계산됐는지(data) AI 추정인지(ai) 구분합니다. 이전 분석에는 없습니다.
+  priceBasis?: "data" | "ai";
+  priceEvidence?: PriceEvidence;
+  commerceEvidence?: CommerceEvidence;
+  evidence?: EvidenceItem[];
 };
 
 export type Space = {

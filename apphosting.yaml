@@ -74,3 +74,9 @@ env:
     value: my-web-app--gap-seam.us-east4.hosted.app
     availability:
       - RUNTIME
+  # 실거래가·상권 근거 조회용 공공데이터포털 키입니다. Secret Manager에 먼저 만든 뒤 아래 주석을 푸세요.
+  # 시크릿이 없는 상태에서 주석을 풀면 배포가 실패합니다. 키가 없어도 앱은 "근거 없음"으로 표시하며 동작합니다.
+  # - variable: DATA_GO_KR_SERVICE_KEY
+  #   secret: DATA_GO_KR_SERVICE_KEY
+  #   availability:
+  #     - RUNTIME

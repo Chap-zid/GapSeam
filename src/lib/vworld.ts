@@ -1,4 +1,5 @@
 import "server-only";
+import { DISTRICT_CATEGORIES, districtLevel, pickDistrictItem, sigunguTokens, type DistrictHit } from "./district";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -15,6 +16,8 @@ export type LocationContext = {
   summary: string;
   facilities: NearbyFacility[];
   landUse: string[];
+  // 주소 좌표 변환에 성공한 경우에만 채웁니다. 반경 상권 조회처럼 정확한 위치가 필요한 근거에 씁니다.
+  coordinate?: { longitude: number; latitude: number };
 };
 
 type Coordinate = {
@@ -214,10 +217,50 @@ export async function getLocationContext(address: string): Promise<LocationConte
       summary: buildSummary(coordinate.refinedAddress, landUse, facilities),
       facilities,
       landUse,
+      coordinate: { longitude: coordinate.longitude, latitude: coordinate.latitude },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("VWorld location lookup failed", message);
     return { source: "fallback", status: `lookup-failed:${message.slice(0, 120)}`, refinedAddress: address, summary: `${address} · VWorld 주변 시설 조회 불가`, facilities: [], landUse: [] };
   }
+}
+
+// VWorld 행정구역 검색(type=DISTRICT)으로 행정구역 코드와 중심점을 찾습니다.
+async function searchDistrict(query: string, category: string) {
+  const params = new URLSearchParams({
+    service: "search",
+    request: "search",
+    version: "2.0",
+    crs: "EPSG:4326",
+    size: "30",
+    page: "1",
+    query,
+    type: "DISTRICT",
+    category,
+    format: "json",
+    errorFormat: "json",
+  });
+  const response = asRecord(asRecord(await fetchJson("search", params, true)).response);
+  if (response.status !== "OK") return [];
+  return asArray(asRecord(response.result).items);
+}
+
+export async function findDistrict(tokens: string[]): Promise<DistrictHit | null> {
+  if (!apiKey() || !tokens.length) return null;
+  const last = tokens[tokens.length - 1];
+  const level = districtLevel(last, tokens[tokens.length - 2]);
+  for (const category of DISTRICT_CATEGORIES[level]) {
+    const hit = pickDistrictItem(await searchDistrict(last, category), tokens);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+// 실거래가 API의 지역 코드(LAWD_CD)는 법정동 코드 앞 5자리, 즉 시·군·구 코드입니다.
+export async function findDistrictCode(address: string) {
+  const tokens = sigunguTokens(address);
+  const hit = await findDistrict(tokens);
+  if (!hit || !/^\d{5}/.test(hit.code)) return null;
+  return { code: hit.code.slice(0, 5), name: hit.title };
 }

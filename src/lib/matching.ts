@@ -19,11 +19,17 @@ export type MatchResult = {
   eligible: boolean;
   fitLevel: "high" | "good" | "possible" | "low";
   warnings: string[];
+  // 점수에 반영된 항목들의 중요도 합(0~1)입니다. 1보다 작으면 일부 항목을 확인하지 못한 부분 점수입니다.
+  coverage: number;
+  partial: boolean;
   algorithmVersion: "geometric-v3";
 };
 
 export const DEFAULT_WEIGHTS: MatchWeights = { region: 0.25, budget: 0.25, area: 0.25, purpose: 0.25 };
 export const DISTANCE_SCALE_KM = 10;
+// 사용자가 정한 중요도의 절반 이상이 실제 데이터로 확인될 때만 점수를 냅니다.
+// 그보다 적으면 점수가 사실상 한두 항목만으로 정해져, 숫자가 적합도를 대표한다고 보기 어렵습니다.
+export const MIN_COVERAGE = 0.5;
 
 export function normalizeWeights(weights: MatchWeights): MatchWeights {
   const values = Object.values(weights);
@@ -70,7 +76,10 @@ export function matchingTool(space: Space, request: SpaceRequest, locations: { s
   };
   if (validCoordinate(locations.space) && validCoordinate(locations.request)) {
     const distance = distanceKm(locations.space, locations.request);
-    add("region", "위치", Math.exp(-distance / DISTANCE_SCALE_KM), `직선거리 약 ${distance.toFixed(1)}km`, `거리 기준 ${DISTANCE_SCALE_KM}km로 계산했습니다.`);
+    const approximate = locations.space.precision === "district" || locations.request.precision === "district";
+    add("region", "위치", Math.exp(-distance / DISTANCE_SCALE_KM),
+      approximate ? `행정구역 중심 기준 직선거리 약 ${distance.toFixed(1)}km` : `직선거리 약 ${distance.toFixed(1)}km`,
+      approximate ? `정확한 주소를 확인하지 못한 쪽은 읍·면·동 또는 시·군·구 중심점으로 계산했습니다. 거리 기준 ${DISTANCE_SCALE_KM}km.` : `거리 기준 ${DISTANCE_SCALE_KM}km로 계산했습니다.`);
   } else add("region", "위치", null, "위치 좌표를 확인할 수 없습니다.", "주소와 희망 지역의 좌표가 모두 필요합니다.");
 
   const price = monthlyPrice(priceText);
@@ -93,14 +102,23 @@ export function matchingTool(space: Space, request: SpaceRequest, locations: { s
     add("purpose", "활용 목적", intersection / union, `공통 목적 ${intersection}개 / 전체 목적 ${union}개`, "희망 목적과 추천 용도의 단어 집합으로 자카드 유사도를 계산합니다.");
   } else add("purpose", "활용 목적", null, "희망 목적 또는 추천 용도를 확인할 수 없습니다.", "분석 결과와 희망 목적이 필요합니다.");
 
+  // 확인하지 못한 항목에는 어떤 숫자도 넣지 않습니다. 확인된 항목만으로 중요도를 다시 나눠 기하평균을 냅니다.
   const missing = factors.filter((factor) => factor.weight > 0 && factor.membership === null);
-  const score = missing.length ? null : Math.round(100 * factors.reduce((product, factor) => factor.weight === 0 ? product : product * Math.pow(factor.membership!, factor.weight), 1));
+  const available = factors.filter((factor) => factor.weight > 0 && factor.membership !== null);
+  const coverage = Math.round(available.reduce((sum, factor) => sum + factor.weight, 0) * 1000) / 1000;
+  const score = available.length && coverage >= MIN_COVERAGE
+    ? Math.round(100 * available.reduce((product, factor) => product * Math.pow(factor.membership!, factor.weight / coverage), 1))
+    : null;
   const warnings = missing.map((factor) => `${factor.label}: ${factor.summary}`);
+  const partial = missing.length > 0;
+  const coverageLine = partial
+    ? `\n· 점수 반영: ${available.map((factor) => factor.label).join("·") || "없음"} (중요도 ${Math.round(coverage * 100)}%) / 확인 필요: ${missing.map((factor) => factor.label).join("·")}`
+    : "";
   return {
-    score, factors, warnings, eligible: score !== null,
+    score, factors, warnings, eligible: score !== null, coverage, partial,
     fitLevel: score !== null && score >= 85 ? "high" : score !== null && score >= 70 ? "good" : score !== null && score >= 55 ? "possible" : "low",
     algorithmVersion: "geometric-v3",
-    reason: factors.map((factor) => `· ${factor.label}: ${factor.summary}`).join("\n"),
+    reason: factors.map((factor) => `· ${factor.label}: ${factor.summary}`).join("\n") + coverageLine,
   };
 }
 

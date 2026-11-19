@@ -2,12 +2,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import type { LocationEvidence, Space } from "@/lib/types";
-import { assessConfidence, guardAnalysis, withRetry } from "@/lib/safety";
+import { buildEvidence, linkUseEvidence, priceFieldsFromEvidence, type CommerceEvidence, type PriceEvidence } from "@/lib/evidence";
+import { getCommerceEvidence, getPriceEvidence } from "@/lib/market";
+import { assessConfidence, guardAnalysis, withRetry, withTimeout } from "@/lib/safety";
 import { hasValidFirebaseSession } from "@/lib/server-auth";
 import { getLocationContext, type LocationContext } from "@/lib/vworld";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
+const EVIDENCE_TIMEOUT_MS = 15_000;
 
 const analysisSchema = {
   type: "object",
@@ -22,8 +25,9 @@ const analysisSchema = {
           name: { type: "string" },
           score: { type: "integer" },
           reasons: { type: "array", items: { type: "string" } },
+          evidenceIds: { type: "array", items: { type: "string" } },
         },
-        required: ["name", "score", "reasons"],
+        required: ["name", "score", "reasons", "evidenceIds"],
         additionalProperties: false,
       },
     },
@@ -144,6 +148,9 @@ function clientLocation(value: unknown): LocationContext | null {
     summary: item.summary.slice(0, 500),
     facilities,
     landUse: Array.isArray(item.landUse) ? item.landUse.filter((entry): entry is string => typeof entry === "string").slice(0, 10).map((entry) => entry.slice(0, 100)) : [],
+    ...(item.coordinate && Number.isFinite(item.coordinate.longitude) && Number.isFinite(item.coordinate.latitude)
+      ? { coordinate: { longitude: Number(item.coordinate.longitude), latitude: Number(item.coordinate.latitude) } }
+      : {}),
   };
 }
 
@@ -157,6 +164,14 @@ export async function POST(request: NextRequest) {
     space = body.space;
     if (!space?.address || !Number.isFinite(space.area)) return NextResponse.json({ error: "Invalid space data" }, { status: 400 });
 
+    // 실거래가 조회는 위치 조회와 동시에 시작합니다. 실패해도 분석은 계속하고, 실패 이유를 결과에 남깁니다.
+    const target = space;
+    const pricePromise: Promise<PriceEvidence> = getPriceEvidence(target).catch((error) => ({
+      status: "unavailable",
+      reason: `실거래가 조회 중 오류가 났습니다: ${error instanceof Error ? error.message : "알 수 없는 오류"}`,
+      source: "국토교통부 실거래가 공개자료(공공데이터포털)",
+    }));
+
     location = clientLocation(body.location) || await withRetry(() => getLocationContext(space!.address));
     location = await enrichFallbackLocation(space, location);
 
@@ -166,6 +181,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ blocked: "low-confidence", confidence, locationSource: location.source, locationStatus: location.status }, { status: 200 });
     }
     if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "분석 모델이 설정되지 않았습니다." }, { status: 503 });
+
+    // 분석 전체 제한(45초) 안에 모델 호출 시간을 남기기 위해 근거 조회는 15초까지만 기다립니다.
+    const [priceEvidence, commerceEvidence] = await Promise.all([
+      withTimeout(pricePromise, EVIDENCE_TIMEOUT_MS, "실거래가 조회 시간이 초과됐습니다.").catch((error): PriceEvidence => ({ status: "unavailable", reason: error instanceof Error ? error.message : "실거래가 조회 실패", source: "국토교통부 실거래가 공개자료(공공데이터포털)" })),
+      withTimeout(getCommerceEvidence(location.coordinate), EVIDENCE_TIMEOUT_MS, "상권정보 조회 시간이 초과됐습니다.").catch((error): CommerceEvidence => ({ status: "unavailable", reason: error instanceof Error ? error.message : "상권정보 조회 실패", source: "소상공인시장진흥공단 상가(상권)정보(공공데이터포털)" })),
+    ]);
+    // VWorld 실측일 때만 시설·용도지역을 근거로 씁니다. AI 주소 추정 문장은 근거가 아닙니다.
+    const evidence = buildEvidence({
+      price: priceEvidence,
+      facilities: location.source === "vworld" ? location.facilities : [],
+      landUse: location.source === "vworld" ? location.landUse : [],
+      commerce: commerceEvidence,
+    });
+    const evidenceLines = evidence.length
+      ? evidence.map((item) => `[${item.id}] ${item.label} (출처: ${item.source})`)
+      : ["(조회된 외부 근거 데이터가 없습니다. 입력 정보만으로 판단하고 evidenceIds는 비워두세요.)"];
 
     const images = (await Promise.all((space.imageUrls || []).slice(0, 3).map(normalizeImageUrl))).filter((url): url is string => Boolean(url));
     const inputContent: Array<Record<string, unknown>> = [{
@@ -191,6 +222,17 @@ export async function POST(request: NextRequest) {
         location.source === "vworld"
           ? "VWorld 조회값을 주변 환경 판단의 우선 근거로 사용하고, 조회되지 않은 사실은 임의로 만들지 마세요."
           : "VWorld 실측 근거가 없습니다. AI 주소 기반 추정이라는 표시를 유지하고 정확한 시설명·거리·교통 노선·용도지역을 새로 만들지 마세요.",
+        "",
+        "근거 데이터 목록(공공 API에서 방금 조회한 값입니다):",
+        ...evidenceLines,
+        "",
+        "추천 활용마다 evidenceIds에 그 판단을 뒷받침하는 근거 ID를 1개 이상 넣으세요. 목록에 없는 ID는 쓰지 마세요.",
+        "reasons에는 인용한 근거의 수치(거리, 업종 수, ㎡당 월세 등)를 그대로 옮겨 쓰고, 목록과 입력에 없는 숫자·통계·시설명은 만들지 마세요.",
+        "반경 상권에서 같은 업종이 이미 많으면 경쟁이 크다고, 0곳이면 공급이 비어 있다고 해석할 수 있습니다. 해석과 데이터를 구분해서 쓰세요.",
+        "근거가 없으면 evidenceIds를 빈 배열로 두고, reasons에 입력 정보만으로 판단했다고 쓰세요.",
+        priceEvidence.status === "ok"
+          ? `월 이용료는 시스템이 실거래가(M1)로 따로 계산합니다. estimatedPrice에는 참고로 ${priceEvidence.monthlyManwon?.low}~${priceEvidence.monthlyManwon?.high}만 원 범위를 그대로 쓰세요.`
+          : "실거래 월세 근거가 없으므로 estimatedPrice는 참고용 추정임을 전제로 쓰세요.",
       ].join("\n"),
     }];
     images.forEach((imageUrl) => inputContent.push({ type: "input_image", image_url: imageUrl, detail: "low" }));
@@ -217,7 +259,20 @@ export async function POST(request: NextRequest) {
     // Output Guard: 개수와 범위를 강제하고 규칙 기반 필터를 통과한 결과만 내보냅니다.
     const guarded = guardAnalysis(JSON.parse(text), location.landUse);
     if (!guarded) throw new Error("Analysis failed output guard");
-    return NextResponse.json({ analysis: guarded.analysis, source: "openai", confidence, locationSource: location.source, locationStatus: location.status, model: process.env.OPENAI_MODEL || "gpt-4.1-mini" });
+
+    // 근거 연결: 모델이 고른 근거 ID를 검증하고, 실거래 근거가 있으면 가격 필드를 계산값으로 바꿉니다.
+    const inputText = (inputContent[0] as { text: string }).text;
+    const priceFields = priceFieldsFromEvidence(priceEvidence, guarded.analysis.estimatedRepairCost);
+    const analysis = {
+      ...guarded.analysis,
+      ...(priceFields || {}),
+      suggestedUses: linkUseEvidence(guarded.analysis.suggestedUses, evidence, inputText),
+      priceBasis: priceFields ? "data" as const : "ai" as const,
+      priceEvidence,
+      commerceEvidence,
+      evidence,
+    };
+    return NextResponse.json({ analysis, source: "openai", confidence, locationSource: location.source, locationStatus: location.status, model: process.env.OPENAI_MODEL || "gpt-4.1-mini" });
   } catch (error) {
     console.error("Space analysis failed", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json({ error: "Analysis unavailable" }, { status: 502 });

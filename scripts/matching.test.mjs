@@ -43,10 +43,34 @@ test("weights normalize, zero weights do not require missing values, invalid wei
   assert.throws(() => normalizeWeights({ region: -1, budget: 1, area: 1, purpose: 1 }));
 });
 
-test("missing information never becomes a fabricated numeric score", () => {
-  assert.equal(matchingTool(space, request).score, null);
-  assert.equal(matchingTool(space, request, locations, "협의").score, null);
-  assert.equal(matchingTool({ ...space, analysis: undefined }, request, locations).score, null);
+test("missing information is never filled in; only confirmed factors are scored", () => {
+  // 위치만 없으면 나머지 세 항목(중요도 75%)으로 다시 나눠 계산합니다. 예산 0.5^(0.25/0.75)
+  const noLocation = matchingTool(space, request);
+  assert.equal(noLocation.factors[0].membership, null);
+  assert.equal(noLocation.coverage, 0.75);
+  assert.equal(noLocation.partial, true);
+  assert.equal(noLocation.score, Math.round(100 * Math.pow(0.5, 0.25 / 0.75)));
+  assert.match(noLocation.reason, /확인 필요: 위치/);
+  // 위치와 예산이 모두 없으면 중요도 50%로, 기준선에서 계산합니다.
+  const half = matchingTool(space, request, {}, "협의");
+  assert.equal(half.coverage, 0.5);
+  assert.equal(half.score, 100);
+  // 분석 결과(이용료·추천 용도)와 위치가 모두 없으면 25%뿐이라 점수를 내지 않습니다.
+  const tooLittle = matchingTool({ ...space, analysis: undefined }, request);
+  assert.equal(tooLittle.coverage, 0.25);
+  assert.equal(tooLittle.score, null);
+  assert.equal(tooLittle.eligible, false);
+});
+
+test("a complete comparison is not marked partial", () => {
+  const result = matchingTool(space, request, locations);
+  assert.equal(result.partial, false);
+  assert.equal(result.coverage, 1);
+});
+
+test("district-level coordinates are labelled as approximate", () => {
+  const result = matchingTool(space, request, { space: { ...point, precision: "district" }, request: point });
+  assert.match(result.factors[0].summary, /행정구역 중심 기준/);
 });
 
 test("monthly prices and overrides are interpreted as monthly amounts", () => {
