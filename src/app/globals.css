@@ -646,6 +646,12 @@ a { color:inherit; text-decoration:none; }
 
 @media (max-width:600px) {
   .shell,.document-page .shell { width:calc(100% - 28px); }
+  .auth-layout { grid-template-columns:minmax(0,1fr); gap:24px; padding-top:0; }
+  .auth-intro { min-width:0; }
+  .auth-intro h1 { font-size:30px; overflow-wrap:anywhere; }
+  .auth-intro>p:not(.eyebrow) { font-size:14px; }
+  .connection-art,.auth-benefits { display:none; }
+  .login-panel { padding:18px; border-radius:16px; }
   .nav { gap:10px; }
   .brand { font-size:18px; }
   .mobile-menu { width:44px; height:44px; display:grid; place-items:center; }
@@ -663,6 +669,13 @@ a { color:inherit; text-decoration:none; }
   .page-head { margin-bottom:24px; }
   .page-head h1,.market-head h1,.dashboard-head h1 { font-size:28px; }
   .form-card,.login-panel { padding:18px; }
+  .form-layout { display:flex; flex-direction:column; gap:16px; }
+  .form-card { order:2; border-radius:15px; }
+  .form-aside { order:1; gap:12px; }
+  .form-aside .side-card { display:none; }
+  .assist-panel { padding:15px; border-radius:15px; }
+  .assist-log { max-height:220px; }
+  .field input,.field select,.field textarea { min-height:48px; font-size:16px; }
   .form-section { padding-bottom:24px; margin-bottom:22px; }
   .form-grid,.request-summary,.meta-grid,.match-room-side,.match-data,.analysis-facts,.cost-grid,.compare,.steps,.role-grid { grid-template-columns:minmax(0,1fr); }
   .field.full { grid-column:auto; }
@@ -690,11 +703,17 @@ a { color:inherit; text-decoration:none; }
   .document-head { gap:16px; }
   .document-head h1,.shared-doc-head h1 { font-size:26px; }
   .document-upload { width:100%; min-height:46px; }
+  .document-workspace { gap:12px; }
+  .document-list,.document-editor-card,.document-agent { border-radius:14px; box-shadow:0 5px 18px #5d350708; }
+  .document-list { max-height:190px; }
+  .document-list-title,.document-toolbar { min-height:54px; height:auto; }
   .document-toolbar { padding:0 10px; gap:8px; }
   .document-toolbar b { max-width:min(48vw,220px); }
-  .document-editor { height:clamp(400px,62svh,620px); }
+  .document-editor { height:clamp(320px,46svh,420px); }
+  .document-editor-placeholder { padding:20px 16px; }
   .document-quick button { min-height:58px; padding:9px; }
   .document-agent,.broker-card,.mediator-guide { padding:16px; }
+  .document-agent textarea { min-height:92px; font-size:16px; }
   .space-detail-photo { height:clamp(230px,70vw,340px); }
   .space-detail-summary h1 { font-size:26px; overflow-wrap:anywhere; }
   .shared-doc-nav { align-items:stretch; flex-direction:column; gap:12px; }
