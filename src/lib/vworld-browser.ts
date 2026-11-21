@@ -1,4 +1,5 @@
-import type { LocationEvidence } from "./types";
+import { DISTRICT_CATEGORIES, districtLevel, districtTokens, pickDistrictItem } from "./district";
+import type { Coordinates, LocationEvidence } from "./types";
 
 type JsonRecord = Record<string, unknown>;
 type Coordinate = { longitude: number; latitude: number; refinedAddress: string };
@@ -44,14 +45,39 @@ async function geocode(address: string, key: string, type: "ROAD" | "PARCEL", do
   return { longitude, latitude, refinedAddress: typeof refined.text === "string" ? refined.text : address } satisfies Coordinate;
 }
 
-export async function getMatchingCoordinate(address: string, token: string) {
+// 주소가 가려졌거나 "대전 동구"처럼 지역명만 있으면 행정구역 검색으로 중심점을 찾습니다.
+async function districtCoordinate(address: string, key: string, domain: string): Promise<Coordinates | null> {
+  const tokens = districtTokens(address);
+  // 앞에서부터 가장 구체적인 행정구역을 먼저 찾고, 실패하면 한 단계씩 넓힙니다.
+  for (let length = tokens.length; length >= 1; length--) {
+    const scope = tokens.slice(0, length);
+    const last = scope[scope.length - 1];
+    for (const category of DISTRICT_CATEGORIES[districtLevel(last, scope[scope.length - 2])]) {
+      const params = new URLSearchParams({ service: "search", request: "search", version: "2.0", crs: "EPSG:4326", size: "30", page: "1", query: last, type: "DISTRICT", category, format: "json", errorFormat: "json", key, domain });
+      const response = asRecord(asRecord(await jsonp("https://api.vworld.kr/req/search", params).catch(() => ({}))).response);
+      if (response.status !== "OK") continue;
+      const hit = pickDistrictItem(asArray(asRecord(response.result).items), scope);
+      if (hit) return { longitude: hit.longitude, latitude: hit.latitude, precision: "district", label: hit.title };
+    }
+  }
+  return null;
+}
+
+export async function getMatchingCoordinate(address: string, token: string): Promise<Coordinates> {
   const configResponse = await fetch("/api/vworld/config", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   if (!configResponse.ok) throw new Error("VWorld 위치 조회 설정을 확인할 수 없습니다.");
   const config = await configResponse.json() as { key?: string; domain?: string };
   if (!config.key) throw new Error("VWorld 위치 조회 키가 없습니다.");
   const domain = config.domain || window.location.host;
-  try { return await geocode(address, config.key, "ROAD", domain); }
-  catch { return geocode(address, config.key, "PARCEL", domain); }
+  for (const type of ["ROAD", "PARCEL"] as const) {
+    try {
+      const point = await geocode(address, config.key, type, domain);
+      return { longitude: point.longitude, latitude: point.latitude, precision: "address", label: point.refinedAddress };
+    } catch { /* 다음 방식으로 다시 찾습니다. */ }
+  }
+  const district = await districtCoordinate(address, config.key, domain);
+  if (district) return district;
+  throw new Error("주소와 행정구역 모두 위치를 찾지 못했습니다.");
 }
 
 function bbox(origin: Coordinate) {
@@ -116,7 +142,7 @@ export async function getBrowserLocationEvidence(address: string, token: string)
     const uses = [...new Set(landUseResults.flat())];
     const area = origin.refinedAddress.split(" ").filter(Boolean).slice(0, 3).join(" ");
     const summary = [uses[0] || area, ...facilities.map((facility) => `${facility.category} ${facility.distanceMeters.toLocaleString("ko-KR")}m`)].join(" · ");
-    return { source: "vworld", refinedAddress: origin.refinedAddress, summary, facilities, landUse: uses };
+    return { source: "vworld", refinedAddress: origin.refinedAddress, summary, facilities, landUse: uses, coordinate: { longitude: origin.longitude, latitude: origin.latitude } };
   } catch {
     return null;
   }

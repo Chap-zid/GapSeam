@@ -58,10 +58,10 @@ const CAUTION = [
 const RESTRICTED_LAND_USE = /농림지역|자연환경보전지역|보전관리지역|개발제한/;
 
 export type UseVerdict = "allowed" | "caution" | "blocked";
-export type ReviewedUse = { name: string; score: number; reasons: string[]; caution?: string };
+export type ReviewedUse = { name: string; score: number; reasons: string[]; caution?: string; evidenceIds?: string[] };
 export type UseReview = { kept: ReviewedUse[]; notes: string[] };
 
-export function reviewUses(uses: { name: string; score: number; reasons: string[] }[], landUse: string[] = []): UseReview {
+export function reviewUses(uses: { name: string; score: number; reasons: string[]; evidenceIds?: string[] }[], landUse: string[] = []): UseReview {
   const notes: string[] = [];
   const restricted = landUse.some((entry) => RESTRICTED_LAND_USE.test(entry));
   const kept: ReviewedUse[] = [];
@@ -106,7 +106,9 @@ export function guardAnalysis(raw: unknown, landUse: string[] = []): { analysis:
       const text = clampText(reason, 120);
       return text ? [text] : [];
     }).slice(0, 4);
-    return [{ name, score, reasons }];
+    // 근거 ID는 짧은 문자열만 받습니다. 실제로 제공한 근거인지는 linkUseEvidence가 다시 확인합니다.
+    const evidenceIds = (Array.isArray(use.evidenceIds) ? use.evidenceIds : []).flatMap((id) => typeof id === "string" && /^[A-Z]\d{1,2}$/.test(id.trim()) ? [id.trim()] : []).slice(0, 6);
+    return [{ name, score, reasons, evidenceIds }];
   }).slice(0, MAX_USES);
 
   if (!normalized.length) return null;

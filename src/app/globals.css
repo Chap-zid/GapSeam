@@ -812,3 +812,29 @@ a { color:inherit; text-decoration:none; }
 .demo-note { font-size:12px !important; color:var(--muted) !important; }
 .demo-note a { color:#a65e00; font-weight:650; }
 @media (max-width:860px) { .demo-layout, .demo-paper-grid { grid-template-columns:1fr; } .demo-guide { position:static; } }
+
+/* 근거 데이터 표시: 추천 용도의 근거 칩과 실거래가 계산 패널 */
+.evidence-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.evidence-chip { display:inline-flex; align-items:baseline; gap:6px; max-width:100%; padding:5px 9px; border-radius:8px; background:var(--soft); border:1px solid var(--line); color:#4a4a4a; font-size:12px; line-height:1.45; }
+.evidence-chip b { color:#a85d00; font-size:11px; font-weight:800; }
+.evidence-chip.market { background:#fffaf2; border-color:#f3dcb8; }
+.evidence-chip.commerce { background:#f3f8ff; border-color:#d4e3f7; }
+.evidence-chip.unverified { background:#fff1f0; border-color:#f3c9c4; color:#9b2c20; }
+.price-evidence { margin-top:18px; padding-top:18px; border-top:1px dashed var(--line); display:grid; gap:10px; }
+.evidence-title { display:flex; align-items:center; gap:7px; margin:0; font-weight:800; font-size:14px; color:#7a4300; }
+.evidence-meta { margin:0; font-size:12px; color:var(--muted); }
+.evidence-stats { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.evidence-stats li { background:var(--soft); border-radius:10px; padding:10px 12px; }
+.evidence-stats span { display:block; font-size:11px; color:var(--muted); margin-bottom:3px; }
+.evidence-stats b { font-size:14px; }
+.evidence-table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+.evidence-table { width:100%; border-collapse:collapse; font-size:12px; }
+.evidence-table caption { text-align:left; padding:9px 12px; font-weight:750; color:#555; caption-side:top; }
+.evidence-table th,.evidence-table td { padding:8px 12px; border-top:1px solid var(--line); white-space:nowrap; text-align:left; }
+.evidence-table th { color:var(--muted); font-weight:700; background:#fafaf8; }
+.evidence-note { display:flex; gap:7px; align-items:flex-start; margin:0; font-size:12px; color:#5e5e5e; line-height:1.6; }
+.evidence-note svg { flex:0 0 auto; margin-top:3px; color:#a85d00; }
+.evidence-note.warn { color:#7a4300; background:var(--cream); border-radius:9px; padding:9px 11px; }
+.evidence-source { display:flex; gap:6px; align-items:center; margin:0; font-size:11px; color:var(--muted); }
+.fit-partial { display:block; margin-top:3px; font-size:11px; color:#a85d00; font-weight:700; }
+@media (max-width: 760px) { .evidence-stats { grid-template-columns:1fr 1fr; } }

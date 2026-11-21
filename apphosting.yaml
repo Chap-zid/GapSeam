@@ -74,3 +74,8 @@ env:
     value: my-web-app--gap-seam.us-east4.hosted.app
     availability:
       - RUNTIME
+  # 실거래가·상권 근거 조회용 공공데이터포털 키입니다.
+  - variable: DATA_GO_KR_SERVICE_KEY
+    secret: DATA_GO_KR_SERVICE_KEY
+    availability:
+      - RUNTIME
