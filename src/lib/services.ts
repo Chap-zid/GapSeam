@@ -10,8 +10,27 @@ import { auth } from "./firebase";
 import { getMatchingCoordinate } from "./vworld-browser";
 import { withTimeout } from "./safety";
 import { sortSpacesNewestFirst } from "./space-order";
+import { classifyPurpose, sanitizePurposeTags } from "./purpose";
 
 export async function saveRequest(input: Omit<SpaceRequest, "id" | "createdAt">) {
+  let purposeTags = classifyPurpose(input.purpose);
+  if (!purposeTags.length) {
+    try {
+      const token = await auth?.currentUser?.getIdToken() || "";
+      const response = await fetch("/api/matching/purpose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ purpose: input.purpose }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error(`Purpose classification HTTP ${response.status}`);
+      const data: { tags?: unknown } = await response.json();
+      purposeTags = sanitizePurposeTags(data.tags);
+    } catch {
+      console.warn("Purpose classification unavailable; matching will mark purpose as unconfirmed.");
+    }
+  }
+  input = { ...input, purposeTags };
   if (!isFirebaseReady || !db) {
     const item = { ...input, id: demoId("request"), createdAt: new Date().toISOString() };
     const data = readDemo(); writeDemo({ ...data, requests: [...data.requests, item] }); return item.id;
@@ -185,7 +204,7 @@ async function matchingCoordinates(addresses: string[]) {
   const unique = [...new Set(addresses.filter(Boolean))];
   const entries = await Promise.all(unique.map(async (address) => {
     try { return [address, await getMatchingCoordinate(address, token)] as const; }
-    catch { return [address, undefined] as const; }
+    catch { console.warn("Matching coordinate lookup failed; location will be marked unconfirmed."); return [address, undefined] as const; }
   }));
   return new Map(entries);
 }

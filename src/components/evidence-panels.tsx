@@ -50,7 +50,10 @@ export function PriceEvidencePanel({ analysis }: { analysis: Analysis }) {
 // 반경 상권 조회 결과(또는 조회하지 못한 이유)를 한 줄로 보여줍니다.
 export function CommerceNote({ analysis }: { analysis: Analysis }) {
   const commerce = analysis.commerceEvidence;
-  if (!commerce) return null;
-  if (commerce.status !== "ok") return <p className="evidence-note warn"><Info size={13}/> 상권 근거 없음: {commerce.reason}</p>;
+  if (!commerce) return <p className="evidence-note warn"><Info size={13}/> 이전 분석에는 상권 정보가 없습니다. 다시 분석하면 조회 결과 또는 AI 참고 추정을 확인할 수 있습니다.</p>;
+  if (commerce.status !== "ok") return <div>
+    <p className="evidence-note warn"><Info size={13}/> 상권 근거 없음: {commerce.reason}</p>
+    {analysis.commerceEstimate ? <div className="evidence-note warn"><b>AI 상권 참고 추정 · 확인 필요</b><p>{analysis.commerceEstimate.summary}</p>{!!analysis.commerceEstimate.checks.length && <p>확인할 사항: {analysis.commerceEstimate.checks.join(" · ")}</p>}<p>실제 상권 조사나 통계가 아니며 현장과 지도에서 확인해야 합니다.</p></div> : <p className="evidence-note warn">AI 상권 참고 추정이 없습니다. 다시 분석해 확인해주세요.</p>}
+  </div>;
   return <p className="evidence-note"><Database size={13}/> 반경 {commerce.radiusMeters}m 상가 {commerce.total}곳{commerce.baseMonth ? `(${commerce.baseMonth} 기준)` : ""} · 많은 업종: {(commerce.topMinors || []).slice(0, 3).map((item) => `${item.name} ${item.count}곳`).join(", ") || "없음"} · 출처: {commerce.source}</p>;
 }

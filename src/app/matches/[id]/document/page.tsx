@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Bot, Check, FileCheck2, FileText, LoaderCircle, RefreshCw, Save, ShieldCheck } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { DocumentLawNotice } from "@/components/document-law-notice";
 import { useSession } from "@/components/session-provider";
 import { auth } from "@/lib/firebase";
 import { saveMatchDocument, watchMatch, watchMatchDocument } from "@/lib/services";
@@ -108,6 +109,7 @@ export default function MatchDocumentPage() {
   return <main className="page shared-document-page"><div className="shell">
     <div className="shared-doc-nav"><Link href={`/matches/${id}`}><ArrowLeft size={16}/> 채팅으로 돌아가기</Link><div><span className="live-chip">Firestore 실시간 동기화</span><Link href={`/documents?matchId=${encodeURIComponent(id)}`}>DOCX 고급 편집 <FileCheck2 size={15}/></Link></div></div>
     <header className="shared-doc-head reveal"><div><p className="eyebrow">매칭 공동 협의 문서</p><h1>대화에서 합의한 내용을 함께 정리하세요.</h1><p>저장할 때 상대방 화면에도 즉시 반영되며, 문서 도우미가 누락된 절차와 모호한 조건을 검토합니다.</p></div><button className="button" disabled={saving || !dirty} onClick={() => void save()}><Save size={17}/>{saving ? "저장 중..." : dirty ? "공유 저장" : "저장됨"}</button></header>
+    <DocumentLawNotice/>
     {remotePending && <div className="document-alert"><RefreshCw size={17}/><span>상대방이 새 버전을 저장했습니다. 현재 작성 내용을 덮어쓸 수 있으니 확인 후 불러오세요.</span><button onClick={loadRemote}>새 버전 불러오기</button></div>}
     {error && <div className="document-alert" role="alert"><ShieldCheck size={17}/>{error}</div>}
     <div className="shared-doc-layout"><section className="shared-doc-editor"><div className="shared-doc-toolbar"><div><span className="sync-dot"/><span>{remote ? `${remote.updatedByName}님 수정 · ${updatedLabel(remote.updatedAt)}` : "첫 문서를 작성해주세요."}</span></div><small>{content.length.toLocaleString()} / 50,000자</small></div><input className="shared-doc-title" value={title} maxLength={120} onChange={(event) => { setTitle(event.target.value); dirtyRef.current = true; setDirty(true); }}/><textarea className="shared-doc-content" value={content} maxLength={50_000} onChange={(event) => { setContent(event.target.value); dirtyRef.current = true; setDirty(true); }}/><div className="shared-doc-foot"><span><Check size={14}/> 저장한 버전은 매칭 당사자만 볼 수 있습니다.</span><button className="button small" disabled={saving || !dirty} onClick={() => void save()}><Save size={15}/> 공유 저장</button></div></section>

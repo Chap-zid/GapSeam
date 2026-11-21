@@ -1,6 +1,8 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { DEFAULT_WEIGHTS, matchingTool, monthlyPrice, normalizeWeights } from "../src/lib/matching.ts";
+import { classifyPurpose, purposeSimilarity, resolvePurposeTags, sanitizePurposeTags } from "../src/lib/purpose.ts";
+import { hasRecognizableRegion, isKoreanCoordinate, isUnmaskedDetailedAddress, localDistrictPoint, validateAiCoordinate } from "../src/lib/location-fallback.ts";
 
 const space = {
   id: "s", ownerId: "o", address: "공간", region: "지역", area: 60, buildingType: "", description: "",
@@ -18,7 +20,7 @@ test("four formulas and weighted geometric score follow the specification", () =
   const result = matchingTool(space, request, locations);
   assert.deepEqual(result.factors.map((factor) => factor.membership), [1, 0.5, 1, 1]);
   assert.equal(result.score, Math.round(100 * Math.pow(0.5, 0.25)));
-  assert.equal(result.algorithmVersion, "geometric-v3");
+  assert.equal(result.algorithmVersion, "geometric-v4");
 });
 
 test("distance and area decay exponentially", () => {
@@ -27,12 +29,40 @@ test("distance and area decay exponentially", () => {
   assert.ok(result.factors[0].membership < Math.exp(-1));
 });
 
-test("purpose uses a true Jaccard union and zero suppresses the score", () => {
+test("purpose uses smoothed tag similarity instead of zeroing unrelated purposes", () => {
   const result = matchingTool(space, { ...request, purpose: "카페" }, locations);
-  assert.equal(result.factors[3].membership, 0);
-  assert.equal(result.score, 0);
+  assert.ok(result.factors[3].membership > 0);
+  assert.ok(result.score > 0);
   const partial = matchingTool(space, { ...request, purpose: "도자기 교육" }, locations);
-  near(partial.factors[3].membership, 1 / 3);
+  assert.ok(partial.factors[3].membership > result.factors[3].membership);
+  assert.equal(matchingTool(space, { ...request, purpose: "불명확" }, locations).factors[3].membership, null);
+});
+
+test("purpose classification validates tags and supports older untagged data", () => {
+  assert.deepEqual(classifyPurpose("도자기 공방"), ["creative", "craft", "education", "experience"]);
+  assert.ok(purposeSimilarity(classifyPurpose("공부방"), classifyPurpose("교육 교실")).score > 0.1);
+  assert.equal(purposeSimilarity([], ["study"]), null);
+  assert.deepEqual(sanitizePurposeTags(["study", "study", "bogus", null]), ["study"]);
+  assert.equal(sanitizePurposeTags(["office", "creative", "craft", "study", "food", "care", "event"]).length, 6);
+  assert.deepEqual(resolvePurposeTags("불명확", { tags: ["study", "bogus"], confidence: 0.8 }), ["study"]);
+  assert.deepEqual(resolvePurposeTags("불명확", { tags: ["study"], confidence: 0.2 }), []);
+  assert.deepEqual(resolvePurposeTags("공부방", { tags: ["food"], confidence: 0.9 }), classifyPurpose("공부방"));
+});
+
+test("fallback points require recognized regions and reject unsafe AI coordinates", () => {
+  assert.equal(localDistrictPoint("대전광역시 서구 둔산동")?.precision, "district");
+  assert.equal(localDistrictPoint("서울 서구"), null);
+  assert.equal(hasRecognizableRegion("불명확한 주소"), false);
+  assert.equal(hasRecognizableRegion("충남 가짜시"), false);
+  assert.equal(localDistrictPoint("세종특별자치시 한누리대로 213")?.precision, "district");
+  assert.equal(isKoreanCoordinate(0, 0), false);
+  assert.equal(isUnmaskedDetailedAddress("대전 서구 둔산로*길 *-*"), false);
+  assert.equal(isUnmaskedDetailedAddress("대전 서구 둔산1동"), false);
+  assert.equal(isUnmaskedDetailedAddress("대전 서구 둔산로 100"), true);
+  assert.equal(validateAiCoordinate("충남 논산시", { latitude: 36.2, longitude: 127.1, confidence: 0.8 })?.precision, "ai-estimate");
+  assert.equal(validateAiCoordinate("충남 논산시", { latitude: 37.5, longitude: 127.1, confidence: 0.9 }), null);
+  assert.equal(validateAiCoordinate("충남 논산시", { latitude: 36.2, longitude: 127.1, confidence: 0.2 }), null);
+  assert.equal(validateAiCoordinate("서울 중구", { latitude: 37.5, longitude: 127, confidence: 0.9 }), null);
 });
 
 test("weights normalize, zero weights do not require missing values, invalid weights fail", () => {
@@ -70,7 +100,9 @@ test("a complete comparison is not marked partial", () => {
 
 test("district-level coordinates are labelled as approximate", () => {
   const result = matchingTool(space, request, { space: { ...point, precision: "district" }, request: point });
-  assert.match(result.factors[0].summary, /행정구역 중심 기준/);
+  assert.match(result.factors[0].summary, /행정구역 대표점 기준/);
+  const estimated = matchingTool(space, request, { space: { ...point, precision: "ai-estimate" }, request: point });
+  assert.match(estimated.factors[0].detail, /불확실/);
 });
 
 test("monthly prices and overrides are interpreted as monthly amounts", () => {

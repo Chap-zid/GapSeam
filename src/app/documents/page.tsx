@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { ChangeEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { DocumentLawNotice } from "@/components/document-law-notice";
 import { auth } from "@/lib/firebase";
 
 type DocumentItem = { id: string; name: string; updatedAt: string; size: number; text: string; matchId?: string };
@@ -79,6 +80,7 @@ function DocumentsContent() {
   return <main className="document-page"><Script src={`${serverUrl}/web-apps/apps/api/documents/api.js`} onLoad={() => setScriptReady(true)} onError={() => setError("문서 편집 서버가 꺼져 있습니다. Docker를 실행한 뒤 새로고침해주세요.")}/><div className="shell">
     {matchId && <div className="document-collab-bar"><div><FileCheck2/><span><b>매칭 공동 문서함</b><small>이 채팅방에서 합의할 계획서와 협의 문서를 함께 관리합니다.</small></span></div><Link href={`/matches/${matchId}`}><ArrowLeft size={15}/> 채팅으로 돌아가기</Link></div>}
     <div className="document-head reveal"><div><p className="eyebrow">공가 문서 도우미</p><h1>문서를 편집하며 공가 계획을 점검하세요</h1><p>원본 DOCX를 직접 편집하고 권한·안전·행정 절차를 검토합니다. 행동 강령 교체는 공가 관련 조항만 제안합니다.</p></div><label className="button document-upload"><Upload size={17}/>{uploading ? "업로드 중..." : "DOCX 파일 선택"}<input type="file" accept=".docx" onChange={upload} disabled={uploading}/></label></div>
+    <DocumentLawNotice/>
     {error && <div className="document-alert" role="alert"><ShieldCheck size={18}/>{error}</div>}
     <div className="document-workspace">
       <aside className="document-list"><div className="document-list-title"><b>{matchId ? "공동 문서" : "최근 문서"}</b><label title="문서 추가"><Plus size={18}/><input type="file" accept=".docx" onChange={upload}/></label></div>{loading ? <p className="document-empty">불러오는 중...</p> : documents.length === 0 ? <div className="document-empty"><FileText/><b>아직 문서가 없습니다</b><span>{matchId ? "채팅 참여자와 편집할 DOCX 문서를 올려보세요." : "DOCX 계획서를 올려 시작하세요."}</span></div> : documents.map((item) => <button key={item.id} className={current?.id === item.id ? "active" : ""} onClick={() => void openDocument(item)}><FileText size={18}/><span><b>{item.name}</b><small>{new Date(item.updatedAt).toLocaleDateString("ko-KR")} · {Math.max(1, Math.round(item.size / 1024))}KB</small></span></button>)}</aside>

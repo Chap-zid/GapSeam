@@ -1,8 +1,9 @@
 import type { CommerceEvidence, EvidenceItem, PriceEvidence } from "./evidence";
+import type { PurposeTag } from "./purpose";
 
 export type Role = "owner" | "seeker";
 // precision이 district이면 정확한 주소가 아니라 읍·면·동 또는 시·군·구 중심점입니다.
-export type Coordinates = { latitude: number; longitude: number; precision?: "address" | "district"; label?: string };
+export type Coordinates = { latitude: number; longitude: number; precision?: "address" | "district" | "ai-estimate"; source?: "vworld" | "local-centroid" | "openai"; label?: string; confidence?: number };
 export type MatchWeights = { region: number; budget: number; area: number; purpose: number };
 export type MatchStatus = "candidate" | "proposed" | "applied" | "accepted" | "rejected";
 export type MatchInitiator = "owner" | "seeker";
@@ -20,6 +21,7 @@ export type LocationEvidence = {
 
 export type SuggestedUse = {
   name: string;
+  purposeTags?: PurposeTag[];
   score: number;
   reasons: string[];
   // caution은 규칙 기반 필터가 붙인 인허가 확인 안내입니다.
@@ -43,6 +45,7 @@ export type Analysis = {
   priceBasis?: "data" | "ai";
   priceEvidence?: PriceEvidence;
   commerceEvidence?: CommerceEvidence;
+  commerceEstimate?: { summary: string; checks: string[] };
   evidence?: EvidenceItem[];
 };
 
@@ -67,6 +70,7 @@ export type SpaceRequest = {
   seekerId: string;
   seekerName: string;
   purpose: string;
+  purposeTags?: PurposeTag[];
   description: string;
   region: string;
   minArea: number;
@@ -90,7 +94,7 @@ export type SpaceMatch = {
   // 소유자가 최종 승인한 이용료입니다. AI 추정값을 그대로 쓰지 않습니다.
   approvedPrice?: string;
   initiator?: MatchInitiator;
-  algorithmVersion?: "fuzzy-mcda-v2" | "geometric-v3";
+  algorithmVersion?: "fuzzy-mcda-v2" | "geometric-v3" | "geometric-v4";
   status: MatchStatus;
   createdAt: unknown;
 };
