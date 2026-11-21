@@ -16,6 +16,12 @@ const SessionContext = createContext<SessionValue | null>(null);
 const ROLE_KEY = "binteum-ieum-pending-role";
 // 로컬 데모 모드에서만 쓰는 탭별 체험 역할입니다. 탭마다 다른 역할로 두 기기 시연을 흉내 낼 수 있습니다.
 const DEMO_ROLE_KEY = "binteum-ieum-demo-role";
+// 이 탭에서 고른 역할입니다. 계정의 기본 역할(users 문서)보다 우선해서, 다른 탭의 역할 전환에 끌려가지 않습니다.
+const TAB_ROLE_KEY = "binteum-ieum-tab-role";
+function tabRole(): Role | null {
+  const value = sessionStorage.getItem(TAB_ROLE_KEY);
+  return value === "owner" || value === "seeker" ? value : null;
+}
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -40,7 +46,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (current !== generation) return;
         const saved = snapshot.data();
         if (saved?.role === "owner" || saved?.role === "seeker") {
-          setUser({ uid: account.uid, name: account.displayName || saved.name || "빈틈이음 회원", role: saved.role, email: account.email || "" });
+          setUser({ uid: account.uid, name: account.displayName || saved.name || "빈틈이음 회원", role: tabRole() || saved.role, email: account.email || "" });
           sessionStorage.removeItem(ROLE_KEY); setReady(true); return;
         }
         const role: Role = sessionStorage.getItem(ROLE_KEY) === "owner" ? "owner" : "seeker";
@@ -59,6 +65,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if ((!auth || !db) && DEMO_MODE) { sessionStorage.setItem(DEMO_ROLE_KEY, role); setUser(getDemoUser(role)); return; }
     if (!auth || !db) throw new Error("Firebase 연결 설정을 확인해주세요.");
     sessionStorage.setItem(ROLE_KEY, role);
+    sessionStorage.setItem(TAB_ROLE_KEY, role);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     await signInWithPopup(auth, provider);
@@ -66,12 +73,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const chooseRole = useCallback(async (role: Role) => {
     if ((!auth || !db) && DEMO_MODE && user) { sessionStorage.setItem(DEMO_ROLE_KEY, role); const updated = getDemoUser(role); setUser(updated); return updated; }
     if (!auth?.currentUser || auth.currentUser.isAnonymous || !db || !user) throw new Error("먼저 Google 계정으로 로그인해주세요.");
+    sessionStorage.setItem(TAB_ROLE_KEY, role);
     await setDoc(doc(db, "users", user.uid), { role }, { merge: true });
     const updated = { ...user, role }; setUser(updated); return updated;
   }, [user]);
   const logout = useCallback(async () => {
     if (auth) await signOut(auth);
-    localStorage.removeItem("binteum-ieum-session"); sessionStorage.removeItem(ROLE_KEY); sessionStorage.removeItem(DEMO_ROLE_KEY);
+    localStorage.removeItem("binteum-ieum-session"); sessionStorage.removeItem(ROLE_KEY); sessionStorage.removeItem(DEMO_ROLE_KEY); sessionStorage.removeItem(TAB_ROLE_KEY);
     setUser(null); setError(""); setReady(true);
   }, []);
   return <SessionContext.Provider value={{ user, ready, error, signInGoogle, chooseRole, logout }}>{children}</SessionContext.Provider>;
