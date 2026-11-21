@@ -1,5 +1,6 @@
 import { DISTRICT_CATEGORIES, districtLevel, districtTokens, pickDistrictItem } from "./district";
 import type { Coordinates, LocationEvidence } from "./types";
+import { isKoreanCoordinate, isUnmaskedDetailedAddress } from "./location-fallback";
 
 type JsonRecord = Record<string, unknown>;
 type Coordinate = { longitude: number; latitude: number; refinedAddress: string };
@@ -36,12 +37,12 @@ function jsonp(url: string, params: URLSearchParams) {
 async function geocode(address: string, key: string, type: "ROAD" | "PARCEL", domain: string) {
   const params = new URLSearchParams({ service: "address", request: "getCoord", version: "2.0", crs: "EPSG:4326", address, refine: "true", simple: "false", format: "json", errorFormat: "json", type, key, domain });
   const response = asRecord(asRecord(await jsonp("https://api.vworld.kr/req/address", params)).response);
-  if (response.status !== "OK") throw new Error(`VWorld ${type} address not found`);
+  if (response.status !== "OK") throw new Error(response.status === "NOT_FOUND" ? "VWorld address not found" : "VWorld service unavailable");
   const point = asRecord(asRecord(response.result).point);
   const refined = asRecord(response.refined);
   const longitude = Number(point.x);
   const latitude = Number(point.y);
-  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) throw new Error("VWorld returned invalid coordinates");
+  if (!isKoreanCoordinate(latitude, longitude)) throw new Error("VWorld returned invalid coordinates");
   return { longitude, latitude, refinedAddress: typeof refined.text === "string" ? refined.text : address } satisfies Coordinate;
 }
 
@@ -54,30 +55,46 @@ async function districtCoordinate(address: string, key: string, domain: string):
     const last = scope[scope.length - 1];
     for (const category of DISTRICT_CATEGORIES[districtLevel(last, scope[scope.length - 2])]) {
       const params = new URLSearchParams({ service: "search", request: "search", version: "2.0", crs: "EPSG:4326", size: "30", page: "1", query: last, type: "DISTRICT", category, format: "json", errorFormat: "json", key, domain });
-      const response = asRecord(asRecord(await jsonp("https://api.vworld.kr/req/search", params).catch(() => ({}))).response);
-      if (response.status !== "OK") continue;
+      const response = asRecord(asRecord(await jsonp("https://api.vworld.kr/req/search", params)).response);
+      if (response.status === "NOT_FOUND") continue;
+      if (response.status !== "OK") throw new Error("VWorld service unavailable");
       const hit = pickDistrictItem(asArray(asRecord(response.result).items), scope);
-      if (hit) return { longitude: hit.longitude, latitude: hit.latitude, precision: "district", label: hit.title };
+      if (hit && isKoreanCoordinate(hit.latitude, hit.longitude)) return { longitude: hit.longitude, latitude: hit.latitude, precision: "district", label: hit.title };
     }
   }
   return null;
 }
 
 export async function getMatchingCoordinate(address: string, token: string): Promise<Coordinates> {
-  const configResponse = await fetch("/api/vworld/config", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-  if (!configResponse.ok) throw new Error("VWorld 위치 조회 설정을 확인할 수 없습니다.");
-  const config = await configResponse.json() as { key?: string; domain?: string };
-  if (!config.key) throw new Error("VWorld 위치 조회 키가 없습니다.");
-  const domain = config.domain || window.location.host;
-  for (const type of ["ROAD", "PARCEL"] as const) {
-    try {
-      const point = await geocode(address, config.key, type, domain);
-      return { longitude: point.longitude, latitude: point.latitude, precision: "address", label: point.refinedAddress };
-    } catch { /* 다음 방식으로 다시 찾습니다. */ }
+  try {
+    const configResponse = await fetch("/api/vworld/config", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (!configResponse.ok) throw new Error("VWorld config unavailable");
+    const config = await configResponse.json() as { key?: string; domain?: string };
+    if (!config.key) throw new Error("VWorld key unavailable");
+    const domain = config.domain || window.location.host;
+    for (const type of (isUnmaskedDetailedAddress(address) ? ["ROAD", "PARCEL"] as const : [])) {
+      try {
+        const point = await geocode(address, config.key, type, domain);
+        return { longitude: point.longitude, latitude: point.latitude, precision: "address", source: "vworld", label: point.refinedAddress };
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== "VWorld address not found") throw error;
+      }
+    }
+    const district = await districtCoordinate(address, config.key, domain);
+    if (district) return { ...district, source: "vworld" };
+  } catch {
+    console.warn("VWorld matching lookup unavailable; trying fallback.");
   }
-  const district = await districtCoordinate(address, config.key, domain);
-  if (district) return district;
-  throw new Error("주소와 행정구역 모두 위치를 찾지 못했습니다.");
+  const response = await fetch("/api/matching/location", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ address }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!response.ok) throw new Error(`위치 대체 조회 실패 (HTTP ${response.status})`);
+  const result = await response.json() as { coordinate?: Coordinates | null; reason?: string };
+  if (result.coordinate) return result.coordinate;
+  throw new Error(result.reason || "위치를 찾지 못했습니다.");
 }
 
 function bbox(origin: Coordinate) {
@@ -122,7 +139,7 @@ async function landUse(origin: Coordinate, key: string, domain: string, id: stri
 }
 
 export async function getBrowserLocationEvidence(address: string, token: string): Promise<LocationEvidence | null> {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !isUnmaskedDetailedAddress(address)) return null;
   try {
     const configResponse = await fetch("/api/vworld/config", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     if (!configResponse.ok) return null;

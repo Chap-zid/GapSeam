@@ -1,4 +1,5 @@
 import type { Coordinates, MatchWeights, Space, SpaceRequest } from "./types";
+import { classifyPurpose, purposeSimilarity, sanitizePurposeTags } from "./purpose.ts";
 
 export type MatchFactorKey = keyof MatchWeights;
 export type MatchFactor = {
@@ -22,7 +23,7 @@ export type MatchResult = {
   // 점수에 반영된 항목들의 중요도 합(0~1)입니다. 1보다 작으면 일부 항목을 확인하지 못한 부분 점수입니다.
   coverage: number;
   partial: boolean;
-  algorithmVersion: "geometric-v3";
+  algorithmVersion: "geometric-v4";
 };
 
 export const DEFAULT_WEIGHTS: MatchWeights = { region: 0.25, budget: 0.25, area: 0.25, purpose: 0.25 };
@@ -64,10 +65,6 @@ function validCoordinate(point?: Coordinates): point is Coordinates {
   return !!point && Number.isFinite(point.latitude) && Math.abs(point.latitude) <= 90 && Number.isFinite(point.longitude) && Math.abs(point.longitude) <= 180;
 }
 
-function purposeTokens(text: string) {
-  return new Set(text.toLowerCase().split(/[^0-9a-z가-힣]+/).filter(Boolean));
-}
-
 export function matchingTool(space: Space, request: SpaceRequest, locations: { space?: Coordinates; request?: Coordinates } = {}, priceText = space.analysis?.estimatedPrice): MatchResult {
   const weights = normalizeWeights(request.matchWeights || DEFAULT_WEIGHTS);
   const factors: MatchFactor[] = [];
@@ -76,10 +73,11 @@ export function matchingTool(space: Space, request: SpaceRequest, locations: { s
   };
   if (validCoordinate(locations.space) && validCoordinate(locations.request)) {
     const distance = distanceKm(locations.space, locations.request);
+    const aiEstimate = locations.space.precision === "ai-estimate" || locations.request.precision === "ai-estimate";
     const approximate = locations.space.precision === "district" || locations.request.precision === "district";
     add("region", "위치", Math.exp(-distance / DISTANCE_SCALE_KM),
-      approximate ? `행정구역 중심 기준 직선거리 약 ${distance.toFixed(1)}km` : `직선거리 약 ${distance.toFixed(1)}km`,
-      approximate ? `정확한 주소를 확인하지 못한 쪽은 읍·면·동 또는 시·군·구 중심점으로 계산했습니다. 거리 기준 ${DISTANCE_SCALE_KM}km.` : `거리 기준 ${DISTANCE_SCALE_KM}km로 계산했습니다.`);
+      aiEstimate ? `AI 주소 추정 기준 직선거리 약 ${distance.toFixed(1)}km` : approximate ? `행정구역 대표점 기준 직선거리 약 ${distance.toFixed(1)}km` : `직선거리 약 ${distance.toFixed(1)}km`,
+      aiEstimate ? `AI의 저정밀 추정 위치로 계산해 실제 건물 간 거리보다 불확실합니다. 거리 기준 ${DISTANCE_SCALE_KM}km.` : approximate ? `정확한 건물 위치가 아닌 행정구역 대표점으로 계산해 실제 거리와 차이가 날 수 있습니다. 거리 기준 ${DISTANCE_SCALE_KM}km.` : `거리 기준 ${DISTANCE_SCALE_KM}km로 계산했습니다.`);
   } else add("region", "위치", null, "위치 좌표를 확인할 수 없습니다.", "주소와 희망 지역의 좌표가 모두 필요합니다.");
 
   const price = monthlyPrice(priceText);
@@ -94,12 +92,11 @@ export function matchingTool(space: Space, request: SpaceRequest, locations: { s
     add("area", "면적", Math.exp(-Math.abs(space.area - desired) / desired), `${space.area}㎡와 희망 기준 ${desired}㎡ 비교`, "희망 범위의 중간값을 사용합니다.");
   } else add("area", "면적", null, "면적 조건을 확인할 수 없습니다.", "공간 면적과 올바른 희망 면적이 필요합니다.");
 
-  const desiredUses = purposeTokens(request.purpose || "");
-  const possibleUses = purposeTokens((space.analysis?.suggestedUses || []).map((use) => use.name).join(" "));
-  if (desiredUses.size && possibleUses.size) {
-    const intersection = [...desiredUses].filter((token) => possibleUses.has(token)).length;
-    const union = new Set([...desiredUses, ...possibleUses]).size;
-    add("purpose", "활용 목적", intersection / union, `공통 목적 ${intersection}개 / 전체 목적 ${union}개`, "희망 목적과 추천 용도의 단어 집합으로 자카드 유사도를 계산합니다.");
+  const desiredUses = sanitizePurposeTags(request.purposeTags).length ? sanitizePurposeTags(request.purposeTags) : classifyPurpose(request.purpose || "");
+  const comparisons = (space.analysis?.suggestedUses || []).map((use) => purposeSimilarity(desiredUses, sanitizePurposeTags(use.purposeTags).length ? sanitizePurposeTags(use.purposeTags) : classifyPurpose(use.name))).filter((value): value is NonNullable<typeof value> => value !== null);
+  const best = comparisons.sort((a, b) => b.score - a.score)[0];
+  if (best) {
+    add("purpose", "활용 목적", best.score, `내부 목적 특성 중 공통 항목 ${best.common}개`, "가장 관련 있는 추천 용도와 비교하며, 단어가 다르더라도 관련 특성을 반영합니다.");
   } else add("purpose", "활용 목적", null, "희망 목적 또는 추천 용도를 확인할 수 없습니다.", "분석 결과와 희망 목적이 필요합니다.");
 
   // 확인하지 못한 항목에는 어떤 숫자도 넣지 않습니다. 확인된 항목만으로 중요도를 다시 나눠 기하평균을 냅니다.
@@ -117,7 +114,7 @@ export function matchingTool(space: Space, request: SpaceRequest, locations: { s
   return {
     score, factors, warnings, eligible: score !== null, coverage, partial,
     fitLevel: score !== null && score >= 85 ? "high" : score !== null && score >= 70 ? "good" : score !== null && score >= 55 ? "possible" : "low",
-    algorithmVersion: "geometric-v3",
+    algorithmVersion: "geometric-v4",
     reason: factors.map((factor) => `· ${factor.label}: ${factor.summary}`).join("\n") + coverageLine,
   };
 }

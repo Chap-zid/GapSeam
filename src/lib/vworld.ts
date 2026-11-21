@@ -1,5 +1,6 @@
 import "server-only";
 import { DISTRICT_CATEGORIES, districtLevel, pickDistrictItem, sigunguTokens, type DistrictHit } from "./district";
+import { isKoreanCoordinate, isUnmaskedDetailedAddress } from "./location-fallback";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -90,7 +91,7 @@ async function requestCoordinate(address: string, type: "ROAD" | "PARCEL"): Prom
   const refined = asRecord(response.refined);
   const longitude = Number(point.x);
   const latitude = Number(point.y);
-  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) throw new Error("VWorld returned invalid coordinates");
+  if (!isKoreanCoordinate(latitude, longitude)) throw new Error("VWorld returned invalid coordinates");
   return {
     longitude,
     latitude,
@@ -98,7 +99,7 @@ async function requestCoordinate(address: string, type: "ROAD" | "PARCEL"): Prom
   };
 }
 
-async function geocode(address: string) {
+export async function geocode(address: string) {
   try {
     return await requestCoordinate(address, "ROAD");
   } catch {
@@ -199,6 +200,9 @@ function buildSummary(refinedAddress: string, landUse: string[], facilities: Nea
 }
 
 export async function getLocationContext(address: string): Promise<LocationContext> {
+  if (!isUnmaskedDetailedAddress(address)) {
+    return { source: "fallback", status: "address-not-detailed", refinedAddress: address, summary: "상세 주소를 확인하지 못해 주변 시설 조회 불가", facilities: [], landUse: [] };
+  }
   if (!apiKey()) {
     return { source: "fallback", status: "missing-key", refinedAddress: address, summary: `${address} · VWorld 주변 시설 조회 불가`, facilities: [], landUse: [] };
   }
