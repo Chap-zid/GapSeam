@@ -9,6 +9,7 @@ import { matchingTool, normalizeWeights, type MatchResult } from "./matching";
 import { auth } from "./firebase";
 import { getMatchingCoordinate } from "./vworld-browser";
 import { withTimeout } from "./safety";
+import { sortSpacesNewestFirst } from "./space-order";
 
 export async function saveRequest(input: Omit<SpaceRequest, "id" | "createdAt">) {
   if (!isFirebaseReady || !db) {
@@ -255,8 +256,8 @@ export function watchSpaces(ownerId: string, callback: (items: Space[]) => void)
 }
 
 export function watchAllSpaces(callback: (items: Space[]) => void) {
-  if (!isFirebaseReady || !db) { const emit = () => callback(readDemo().spaces); emit(); return subscribeDemo(emit); }
-  return onSnapshot(collection(db, "spaces"), (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Space))));
+  if (!isFirebaseReady || !db) { const emit = () => callback(sortSpacesNewestFirst(readDemo().spaces)); emit(); return subscribeDemo(emit); }
+  return onSnapshot(collection(db, "spaces"), (snapshot) => callback(sortSpacesNewestFirst(snapshot.docs.map((item) => ({ id: item.id, ...item.data({ serverTimestamps: "estimate" }) } as Space)))));
 }
 
 export function watchMatch(matchId: string, callback: (item: SpaceMatch | null) => void) {
