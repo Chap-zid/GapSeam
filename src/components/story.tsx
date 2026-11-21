@@ -14,7 +14,9 @@ type Pt = [number, number];
 const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const smooth = (a: number, b: number, v: number) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
 const spring = { type: "spring", stiffness: 140, damping: 18 } as const;
-const staticStoryQuery = "(max-width: 620px), (max-height: 600px)";
+// 모바일에서도 스크롤 장면을 유지합니다. 세로 공간이 극단적으로 짧은 화면만
+// 정적 흐름으로 전환하고, 동작 줄이기 설정은 아래 useReducedMotion에서 존중합니다.
+const staticStoryQuery = "(max-height: 520px)";
 const subscribeStaticStory = (callback: () => void) => {
   const media = window.matchMedia(staticStoryQuery);
   media.addEventListener("change", callback);
