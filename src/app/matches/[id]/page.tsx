@@ -90,7 +90,7 @@ export default function MatchChatPage() {
 
   return <main className="page match-room-page"><div className="shell">
     <div className="match-room-top"><Link href={`/${user.role}/dashboard`}><ArrowLeft size={16}/> 대시보드</Link><StatusBadge status={match.status}/></div>
-    <header className="match-room-head reveal"><div><p className="eyebrow">매칭 전용 협의 공간</p><h1>{space?.address || "공간 연결"}</h1><p>{request?.seekerName || "이용자"} · {request?.purpose || "공간 이용"} · 적합도 {match.score}%</p></div><Link className="button" href={`/matches/${id}/document`}><FileText size={18}/> 공동 문서 열기</Link></header>
+    <header className="match-room-head reveal"><div><p className="eyebrow">매칭 전용 협의 공간</p><h1>{space?.address || "공간 연결"}</h1><p>{request?.seekerName || "이용자"} · {request?.purpose || "공간 이용"} · 적합도 {match.score === null ? "확인 필요" : `${match.score}%`}</p></div><Link className="button" href={`/matches/${id}/document`}><FileText size={18}/> 공동 문서 열기</Link></header>
     <div className="match-room-layout"><section className="chat-card"><div className="chat-title"><div><MessageCircle/><span><b>실시간 대화</b><small>매칭 참여자와 중개 에이전트가 함께 있습니다.</small></span></div><span className="live-chip">실시간 연결</span></div><div className="chat-log">
       {messages.length === 0 ? <div className="chat-empty"><Users/><b>첫 메시지를 보내보세요.</b><p>방문 일정, 이용료, 정비 범위처럼 합의가 필요한 내용을 대화로 정리할 수 있습니다. 중개 에이전트에게 진행 정리를 맡길 수도 있습니다.</p></div> : messages.map((message) => message.role === "agent"
         ? <div className="chat-broker" key={message.id}><div className="chat-broker-head"><Handshake size={15}/><b>{message.senderName || BROKER_NAME}</b><time>{timeLabel(message.createdAt)}</time></div><p>{message.text}</p><small>중개 진행을 돕는 안내이며, 법률 판단이나 계약 확정이 아닙니다.</small></div>

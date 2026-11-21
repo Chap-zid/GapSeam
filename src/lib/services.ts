@@ -213,8 +213,9 @@ export async function sendProposal(space: Space, request: SpaceRequest, approved
 }
 
 export async function applyToSpace(space: Space, request: SpaceRequest, match?: MatchResult) {
+  // 위치·이용료 같은 정보가 없어 적합도를 계산하지 못해도 신청은 보낼 수 있습니다.
+  // 점수는 null로 저장하고, 소유자가 신청 내용을 보고 직접 판단합니다.
   const result = match || await calculateMatch(space, request);
-  if (result.score === null) throw new Error("적합도 계산에 필요한 위치와 이용료 정보를 확인해주세요.");
   const id = `${space.id}__${request.id}`;
   const payload = { spaceId: space.id, requestId: request.id, ownerId: space.ownerId, seekerId: request.seekerId, score: result.score, reason: result.reason, approvedPrice: space.analysis?.estimatedPrice || "협의", initiator: "seeker" as const, algorithmVersion: result.algorithmVersion, status: "applied" as const };
   if (!isFirebaseReady || !db) {

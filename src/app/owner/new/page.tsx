@@ -47,7 +47,7 @@ export default function SpaceFormPage() {
     try {
       // 소유자 확인 서류는 등록 뒤 에이전트 결과 화면의 소유자 확인 카드에서 따로 제출합니다.
       const savedSpaceId=await saveSpace({ownerId:user.uid,address:form.address.trim(),region:extractRegion(form.address),area,buildingType:form.buildingType,description:form.description.trim(),currentStatus:form.currentStatus||'공가',facilities:form.facilities,repairNeeds:form.repairNeeds.trim()},photos.map((photo)=>photo.file));
-      router.push(`/agent/${savedSpaceId}`);
+      router.push(`/agent/${savedSpaceId}?registered=1`);
     }
     catch { setError("공간을 저장하지 못했습니다. 입력 내용은 유지되니 다시 시도해주세요."); setSaving(false); }
   }

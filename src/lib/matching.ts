@@ -36,8 +36,10 @@ export function normalizeWeights(weights: MatchWeights): MatchWeights {
 
 export function monthlyPrice(text?: string): number | null {
   const value = String(text || "").replace(/,/g, "");
-  const found = value.match(/월\s*(\d+(?:\.\d+)?)(?:\s*[~\-–]\s*(\d+(?:\.\d+)?))?\s*만\s*원/) ||
-    (!/보증금|연\s*\d/.test(value) ? value.match(/(\d+(?:\.\d+)?)(?:\s*[~\-–]\s*(\d+(?:\.\d+)?))?\s*만\s*원/) : null);
+  // "월 35~45만 원"뿐 아니라 "월세 약 40만~60만원", "월 임대료 약 80만원~120만원"도 월 금액으로 읽습니다.
+  // 매매가·전세가(억 단위)는 월 이용료가 아니므로 숫자만 보고 추정하지 않습니다.
+  const found = value.match(/월\s*(?:세|임대료|이용료)?\s*(?:약\s*)?(\d+(?:\.\d+)?)\s*(?:만\s*원?)?\s*(?:[~\-–]\s*(\d+(?:\.\d+)?))?\s*만\s*원/) ||
+    (!/보증금|연\s*\d|억/.test(value) ? value.match(/(\d+(?:\.\d+)?)(?:\s*[~\-–]\s*(\d+(?:\.\d+)?))?\s*만\s*원/) : null);
   if (!found) return null;
   const first = Number(found[1]);
   const last = Number(found[2] || found[1]);
