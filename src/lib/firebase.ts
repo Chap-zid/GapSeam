@@ -1,5 +1,5 @@
 import { FirebaseApp, getApps, initializeApp } from "firebase/app";
-import { Auth, getAuth } from "firebase/auth";
+import { Auth, browserPopupRedirectResolver, browserSessionPersistence, getAuth, initializeAuth } from "firebase/auth";
 import { Firestore, getFirestore } from "firebase/firestore";
 import { FirebaseStorage, getStorage } from "firebase/storage";
 
@@ -23,7 +23,10 @@ export let storage: FirebaseStorage | null = null;
 
 if (isFirebaseReady && typeof window !== "undefined") {
   app = getApps()[0] ?? initializeApp(config);
-  auth = getAuth(app);
+  // 로그인은 탭마다 따로 유지합니다. 한 탭은 소유자, 다른 탭은 이용자로 시연해도 서로 바뀌지 않습니다.
+  // 개발 중 새로고침(HMR)으로 이미 초기화된 경우에는 기존 인스턴스를 씁니다.
+  try { auth = initializeAuth(app, { persistence: browserSessionPersistence, popupRedirectResolver: browserPopupRedirectResolver }); }
+  catch { auth = getAuth(app); }
   db = getFirestore(app);
   storage = getStorage(app);
 }
