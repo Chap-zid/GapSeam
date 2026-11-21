@@ -46,9 +46,9 @@ export default function SpaceDetailPage() {
   const existing = matches.find((match) => match.spaceId === id && match.requestId === requestId);
 
   async function apply() {
-    if (!space || !selectedRequest || !result || busy) return;
+    if (!space || !selectedRequest || busy) return;
     setBusy(true); setError("");
-    try { await applyToSpace(space, selectedRequest, result); }
+    try { await applyToSpace(space, selectedRequest, result || undefined); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "공간 이용 신청을 보내지 못했습니다."); }
     finally { setBusy(false); }
   }
@@ -70,7 +70,7 @@ export default function SpaceDetailPage() {
         {currentComparison?.error && <p className="login-error" role="alert">{currentComparison.error}</p>}
         {result && <div className="fit-summary"><div className="fit-score">{result.score !== null && <span><CountUp value={result.score}/><small>점</small></span>}<div><b>{result.score === null ? "적합도 계산 불가" : result.fitLevel === "high" ? "매우 높은 적합도" : result.fitLevel === "good" ? "높은 적합도" : result.fitLevel === "possible" ? "조건 확인 필요" : "적합도 낮음"}</b><small>가중 기하평균 · v3</small></div></div><div className="fit-bars">{result.factors.map((factor) => <div key={factor.key}><span>{factor.label} (중요도 {Math.round(factor.weight * 100)}%)<b>{factor.membership === null ? "확인 필요" : `${factor.points}%`}</b></span>{factor.membership !== null && <i><em style={{width:`${factor.membership * 100}%`}}/></i>}<small>{factor.summary} {factor.detail}</small></div>)}</div>{result.warnings.length > 0 && <div className="fit-warning"><CircleAlert size={16}/><span>{result.warnings.join(" ")}</span></div>}</div>}
         {error && <p className="login-error" role="alert">{error}</p>}
-        {existing ? <div className="application-result"><StatusBadge status={existing.status}/>{existing.status === "accepted" ? <><p>매칭이 성사되었습니다. 전용 채팅방에서 조건을 조율하세요.</p><Link className="button full-button" href={`/matches/${existing.id}`}><MessageCircle size={17}/> 채팅 시작</Link></> : <p>{existing.status === "applied" ? "소유자가 신청 내용을 검토하고 있습니다." : existing.status === "proposed" ? "소유자가 먼저 제안을 보냈습니다. 이용자 대시보드에서 응답해주세요." : "이 연결 요청은 종료되었습니다."}</p>}</div> : <button className="button full-button" disabled={busy || !result || result.score === null} onClick={() => void apply()}><Send size={17}/>{busy ? "신청을 보내는 중..." : "소유자에게 이용 신청"}</button>}
+        {existing ? <div className="application-result"><StatusBadge status={existing.status}/>{existing.status === "accepted" ? <><p>매칭이 성사되었습니다. 전용 채팅방에서 조건을 조율하세요.</p><Link className="button full-button" href={`/matches/${existing.id}`}><MessageCircle size={17}/> 채팅 시작</Link></> : <p>{existing.status === "applied" ? "소유자가 신청 내용을 검토하고 있습니다." : existing.status === "proposed" ? "소유자가 먼저 제안을 보냈습니다. 이용자 대시보드에서 응답해주세요." : "이 연결 요청은 종료되었습니다."}</p>}</div> : <>{!matchLoading && (!result || result.score === null) && <p className="muted-copy">일부 정보가 없어 적합도를 계산하지 못했지만 신청은 보낼 수 있습니다. 소유자가 신청 내용을 보고 직접 판단합니다.</p>}<button className="button full-button" disabled={busy || matchLoading} onClick={() => void apply()}><Send size={17}/>{busy ? "신청을 보내는 중..." : "소유자에게 이용 신청"}</button></>}
         <p className="application-note"><Check size={13}/> 신청만으로 계약이 체결되지 않으며, 상대방이 수락해야 채팅이 열립니다.</p>
       </>}
     </div></aside></div>

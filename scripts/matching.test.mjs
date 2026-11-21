@@ -54,5 +54,9 @@ test("monthly prices and overrides are interpreted as monthly amounts", () => {
   assert.equal(monthlyPrice("협의"), null);
   assert.equal(monthlyPrice("보증금 500만 원, 월 40만 원"), 40);
   assert.equal(monthlyPrice("보증금 500만 원"), null);
+  assert.equal(monthlyPrice("월세 약 40만~60만원 수준 추정"), 50);
+  assert.equal(monthlyPrice("월 임대료 약 80만원~120만원 예상"), 100);
+  assert.equal(monthlyPrice("보증금 1000만원에 월세 50~70만원 수준"), 60);
+  assert.equal(monthlyPrice("약 1억 5,000만~2억 원 (매매가 추정)"), null);
   assert.equal(matchingTool(space, request, locations, "월 100만 원").factors[1].membership, 0.25);
 });

@@ -64,7 +64,8 @@ export type SpaceMatch = {
   requestId: string;
   ownerId: string;
   seekerId: string;
-  score: number;
+  // 정보가 부족해 계산하지 못한 이용자 신청은 null입니다.
+  score: number | null;
   reason: string;
   // 소유자가 최종 승인한 이용료입니다. AI 추정값을 그대로 쓰지 않습니다.
   approvedPrice?: string;
