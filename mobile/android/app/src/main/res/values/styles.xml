@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 웹 화면이 밝은 배경만 쓰므로 앱도 밝은 테마로 고정합니다(시스템 다크 모드에서 상태바 영역이 어둡게 비치지 않도록). -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#F99D26</item>
+        <item name="colorPrimaryDark">#E98A12</item>
+        <item name="colorAccent">#F99D26</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="android:background">@drawable/splash</item>
+    </style>
+</resources>

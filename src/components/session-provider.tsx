@@ -1,8 +1,9 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithPopup, signOut } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { hasNativeGoogleSignIn, nativeGoogleIdToken, nativeGoogleSignOut } from "@/lib/native-app";
 import { getDemoUser } from "@/lib/demo-store";
 import type { Role, UserProfile } from "@/lib/types";
 
@@ -66,6 +67,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (!auth || !db) throw new Error("Firebase 연결 설정을 확인해주세요.");
     sessionStorage.setItem(ROLE_KEY, role);
     sessionStorage.setItem(TAB_ROLE_KEY, role);
+    if (hasNativeGoogleSignIn()) {
+      // Android 앱: WebView에서는 Google 팝업이 차단되므로 네이티브 계정 선택으로 받은 ID 토큰으로 같은 Firebase 계정에 로그인합니다.
+      await signInWithCredential(auth, GoogleAuthProvider.credential(await nativeGoogleIdToken()));
+      return;
+    }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     await signInWithPopup(auth, provider);
@@ -79,6 +85,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
   const logout = useCallback(async () => {
     if (auth) await signOut(auth);
+    await nativeGoogleSignOut();
     localStorage.removeItem("binteum-ieum-session"); sessionStorage.removeItem(ROLE_KEY); sessionStorage.removeItem(DEMO_ROLE_KEY); sessionStorage.removeItem(TAB_ROLE_KEY);
     setUser(null); setError(""); setReady(true);
   }, []);

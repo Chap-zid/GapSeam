@@ -1,0 +1,22 @@
+{
+  "appId": "com.gapseam.app",
+  "appName": "빈틈이음",
+  "webDir": "www",
+  "server": {
+    "url": "https://my-web-app--gap-seam.us-east4.hosted.app",
+    "cleartext": false,
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "appendUserAgent": "GapSeamApp/1.0",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "GoogleSignIn": {
+      "webClientId": "439342219364-ddcd3mfog3do6uibg9dcnsr9a92ggn4k.apps.googleusercontent.com"
+    },
+    "SystemBars": {
+      "style": "LIGHT"
+    }
+  }
+}

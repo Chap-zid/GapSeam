@@ -20,3 +20,8 @@ package-lock.json -diff linguist-generated
 *.docx binary
 *.hwp binary
 *.hwpx binary
+
+# Windows 배치 파일(Android gradlew.bat)은 CRLF가 필요합니다.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.jar binary

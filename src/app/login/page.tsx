@@ -27,6 +27,11 @@ function Login() {
         "auth/unauthorized-domain": "이 주소에서 Google 로그인을 사용할 수 없습니다. 관리자에게 문의해주세요.",
         "auth/network-request-failed": "네트워크 연결을 확인한 뒤 다시 시도해주세요.",
         "auth/operation-not-allowed": "Google 로그인이 아직 활성화되지 않았습니다.",
+        // Android 앱의 네이티브 Google 로그인(src/lib/native-app.ts)
+        "native/canceled": "로그인이 취소되었습니다. 준비되면 다시 시작해주세요.",
+        "native/no-credential": "이 기기에 Google 계정이 없습니다. 기기 설정에서 Google 계정을 추가한 뒤 다시 시도해주세요.",
+        "native/failed": "앱에서 Google 로그인을 완료하지 못했습니다. 앱을 최신 버전으로 업데이트한 뒤 다시 시도해주세요.",
+        "native/config-missing": "앱의 Google 로그인 설정이 없습니다. 관리자에게 문의해주세요.",
       };
       setError(messages[code || ""] || "로그인에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally { setLoading(false); }
