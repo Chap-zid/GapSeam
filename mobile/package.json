@@ -1,0 +1,19 @@
+{
+  "name": "binteum-ieum-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "빈틈이음 Android 앱 (Capacitor). 배포된 웹 서비스를 앱으로 감싸고 Google 로그인은 네이티브로 처리합니다.",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "build:debug": "cap sync android && cd android && gradlew assembleDebug",
+    "build:release": "cap sync android && cd android && gradlew assembleRelease bundleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  }
+}

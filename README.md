@@ -29,6 +29,8 @@ docker compose up -d
 
 배포 URL: `https://my-web-app--gap-seam.us-east4.hosted.app`
 
+Android 앱은 `mobile/`에 있습니다. 배포된 웹을 그대로 불러오는 Capacitor 앱이라 웹 변경은 배포만 하면 앱에도 반영되며, Google 로그인만 네이티브로 처리합니다. 빌드·서명·Firebase 등록 방법은 [mobile/README.md](mobile/README.md)를 참고하세요.
+
 분석 API는 Firebase ID 토큰을 검증한 로그인 사용자만 호출할 수 있습니다. 배포 환경의 OpenAI 키는 `apphosting.yaml`의 값이 아니라 Google Cloud Secret Manager에서 주입됩니다.
 
 ## Firebase 설정
