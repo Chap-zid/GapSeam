@@ -203,7 +203,7 @@ function Hero({ p }: { p: P }) {
   const capOpacity = useTransform(p, [0.62, 0.82], [0, 1]), capY = useTransform(p, [0.62, 0.82], [40, 0]);
   return <>
     <motion.div className="st-hero-copy" style={{ opacity, y, scale }}>
-      <motion.p className="st-kicker" initial={{ opacity: 0, y: 14, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={spring}>빈집 활용 AI 에이전트</motion.p>
+      <motion.p className="st-kicker" initial={{ opacity: 0, y: 14, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={spring}>FINDER(KE) · 빈집 활용 AI 에이전트</motion.p>
       <motion.h1 aria-label="비어 있는 공간을, 필요한 사람에게." initial="hide" animate="show" variants={letters}>
         <span aria-hidden><Letters text="비어 있는 공간을,"/><br/><Letters text="필요한 사람에게."/></span>
       </motion.h1>
@@ -399,6 +399,14 @@ function Vision({ p }: { p: P }) {
   </>;
 }
 
+const TEAM = [
+  { name: "민준기", role: "팀장", work: ["프로젝트 총괄", "서비스 기획", "서비스 흐름 설계"] },
+  { name: "오혜성", role: "설계자", work: ["AI 추천 기능 설계", "가격 산정 로직", "AI 기능 설명 자료"] },
+  { name: "성무빈", role: "디자이너", work: ["UI/UX 설계", "프론트엔드 개발", "서비스 시연"] },
+  { name: "김선민", role: "발표자", work: ["발표 자료 제작", "발표와 질의응답", "시장·사례 조사"] },
+  { name: "이민주", role: "개발자", work: ["API 연동", "데이터 검증·백엔드", "발표와 질의응답"] },
+  { name: "김태훈", role: "아이디어 및 디자이너", work: ["아이디어", "디자인"] },
+];
 const USES = [
   { icon: Home, title: "공간 소유자", text: "사진과 주소만 올리면 활용안과 수익을 분석합니다", href: "/owner/new", cta: "내 공간 분석하기" },
   { icon: Search, title: "공간 이용자", text: "원하는 조건을 말하면 맞는 공간을 추천합니다", href: "/spaces", cta: "공간 찾아보기" },
@@ -423,6 +431,18 @@ export function Story() {
     <Scene name="flow" len={5} staticStory={staticStory}>{(p) => <Flow p={p} staticStory={staticStory}/>}</Scene>
     <Scene name="safety" len={4} staticStory={staticStory}>{(p) => <Safety p={p} staticStory={staticStory}/>}</Scene>
     <Scene name="vision" len={3} staticStory={staticStory}>{(p) => <Vision p={p}/>}</Scene>
+
+    <section className="st-team shell">
+      <motion.p className="st-kicker" {...rise}>대전대신고등학교 · 2026 AI 동행 프로젝트 메이커톤</motion.p>
+      <motion.h2 {...rise}>이 이야기를 만든 팀, FINDER(KE)</motion.h2>
+      <div className="st-team-grid">
+        {TEAM.map((m, i) => <Tilt className="st-member" index={i} key={m.name}>
+          <i>{m.name[0]}</i><small>{m.role}</small><h3>{m.name}</h3>
+          <ul>{m.work.map((w) => <li key={w}>{w}</li>)}</ul>
+        </Tilt>)}
+      </div>
+      <motion.p className="st-motto" {...rise}>한 목표를 위해, 다 같이 달렸습니다.</motion.p>
+    </section>
 
     <section className="st-use shell">
       <motion.h2 {...rise}>직접 써보세요</motion.h2>

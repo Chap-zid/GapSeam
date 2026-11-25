@@ -128,6 +128,18 @@
 .st-vision-fill { position:absolute; inset:0; z-index:2; background:var(--orange); }
 .st-vision-fill .st-vision-copy, .st-vision-fill .hot, .st-vision-fill p { color:#fff; }
 
+/* 팀 */
+.st-team { position:relative; z-index:1; padding:150px 0 40px; text-align:center; }
+.st-team h2 { font-size:clamp(30px, 4vw, 52px); margin:20px 0 48px; }
+.st-team-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+.st-member { padding:28px 22px; border-radius:26px; background:#fff; border:1px solid #f0e6d8; text-align:left; }
+.st-member>i { width:56px; height:56px; display:grid; place-items:center; margin-bottom:22px; border-radius:20px 20px 20px 6px; background:var(--orange); color:#fff; font-style:normal; font-size:24px; font-weight:800; }
+.st-member small { color:#a85d00; font-weight:700; font-size:13px; }
+.st-member h3 { font-size:24px; margin:4px 0 16px; }
+.st-member ul { padding:0; list-style:none; display:grid; gap:8px; color:#7a6f61; font-size:14px; }
+.st-member li:before { content:""; display:inline-block; width:5px; height:5px; margin:0 8px 2px 0; border-radius:50%; background:#f6c47f; vertical-align:middle; }
+.st-motto { margin-top:44px !important; font-size:clamp(20px, 2.4vw, 28px); font-weight:700; color:#5c5246; }
+
 /* 직접 써보기, 마무리 */
 .st-use { position:relative; z-index:1; padding:120px 0 40px; }
 .st-use h2 { text-align:center; font-size:clamp(30px, 4vw, 50px); margin-bottom:44px; }
@@ -165,6 +177,7 @@
   .st-core .st-core-mark { width:38px; height:38px; }
   .st-side { width:100%; max-width:420px; padding:20px; flex-direction:row; flex-wrap:wrap; gap:8px; }
   .st-side h3 { width:calc(100% - 40px); margin:2px 0 4px; font-size:18px; }
+  .st-team-grid { grid-template-columns:repeat(2, 1fr); }
   .st-use-grid { grid-template-columns:1fr; }
   .st-use-card a { min-height:0; }
 }
@@ -240,6 +253,10 @@
   .st-vision-copy { padding:0 18px; gap:18px; }
   .st-vision h2 { font-size:clamp(38px, 11vw, 54px); }
   .st-vision-copy p { font-size:16px; line-height:1.55; }
+  .st-team { padding-top:100px; }
+  .st-team-grid { grid-template-columns:1fr 1fr; gap:10px; }
+  .st-member { padding:20px 16px; }
+  .st-member h3 { font-size:20px; }
   .st-use { padding-top:90px; }
   .st-end { padding:80px 16px 110px; }
 }
@@ -248,6 +265,7 @@
   .st-deck { height:clamp(300px, 43svh, 350px); }
   .st-step { width:84vw; }
   .st-gate span { font-size:10px; }
+  .st-team-grid { grid-template-columns:1fr; }
 }
 @media (max-width:620px) and (max-height:700px) {
   .st-stage { padding:10px 0; }
@@ -299,5 +317,6 @@
   .st-static .st-hero-actions .button { width:100%; }
   .st-static .st-cause-grid { width:calc(100% - 28px); }
   .st-static .st-cause-content { padding:18px 20px 22px; }
+  .st-static .st-team { padding-top:70px; }
   .st-static .st-use { padding-top:70px; }
 }
